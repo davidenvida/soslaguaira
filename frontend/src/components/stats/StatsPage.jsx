@@ -117,6 +117,22 @@ function TopLista({ titulo, filas, transformar }) {
 export default function StatsPage() {
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('loading'); // loading | ready | error
+  const [porOrigen, setPorOrigen] = useState(null); // { osint, app } — reportes por origen
+
+  // Reportes por origen (osint = equipo, app = externos). Llamada extra a intelStats.
+  useEffect(() => {
+    if (typeof api.intelStats !== 'function') return undefined;
+    let vivo = true;
+    api
+      .intelStats()
+      .then((r) => {
+        if (vivo && r?.por_origen) setPorOrigen(r.por_origen);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   useEffect(() => {
     let vivo = true;
@@ -175,6 +191,23 @@ export default function StatsPage() {
     <main className="mx-auto w-full max-w-4xl p-4 sm:p-6">
       <h1 className="mb-1 text-xl font-bold text-slate-900">Estadísticas de visitas</h1>
       <p className="mb-5 text-xs text-slate-500">SOS La Guaira · directorio de desaparecidos</p>
+
+      {/* Reportes por origen (independiente de las visitas). */}
+      {porOrigen && (
+        <div className="mb-6">
+          <h2 className="mb-2 text-sm font-bold text-slate-800">Reportes por origen</h2>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="rounded-xl bg-indigo-50 p-4 ring-1 ring-indigo-200 sm:p-5">
+              <div className="text-3xl font-extrabold tabular-nums text-indigo-700 sm:text-4xl">{fmt(porOrigen.osint ?? 0)}</div>
+              <div className="mt-1 text-xs font-medium text-indigo-700/80">Reportes del equipo (recopilados)</div>
+            </div>
+            <div className="rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200 sm:p-5">
+              <div className="text-3xl font-extrabold tabular-nums text-amber-700 sm:text-4xl">{fmt(porOrigen.app ?? 0)}</div>
+              <div className="mt-1 text-xs font-medium text-amber-700/80">Reportes de usuarios externos</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {status === 'loading' && (
         <p className="py-12 text-center text-sm text-slate-500" aria-live="polite">Cargando estadísticas…</p>
