@@ -440,7 +440,8 @@ router.patch('/:id', adminGate, async (req, res, next) => {
     if (b.tipo !== undefined) addSet('tipo', cleanStr(b.tipo, 60));
     if (b.descripcion !== undefined) addSet('descripcion', cleanStr(b.descripcion, 1000));
     if (b.fuente_url !== undefined) addSet('fuente_url', cleanStr(b.fuente_url, 500)); // backfill del enlace
-    if (!sets.length) return fail(res, 'No hay campos para actualizar (fuente/tipo/descripcion).');
+    if (b.foto_url !== undefined) addSet('foto_url', cleanStr(b.foto_url, 500)); // adjuntar imagen del cartel
+    if (!sets.length) return fail(res, 'No hay campos para actualizar (fuente/tipo/descripcion/fuente_url/foto_url).');
     params.push(id);
     const { rows } = await query(
       `UPDATE listas_manuscritas SET ${sets.join(', ')} WHERE id = $${params.length}
