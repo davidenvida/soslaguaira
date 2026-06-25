@@ -148,16 +148,22 @@ export default function SubirListaManuscrita({ className = '' }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setAbierto(true)}
-        className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 ${className}`}
-      >
-        <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M12 16a1 1 0 0 1-1-1V7.41L8.7 9.7 7.3 8.3 12 3.6l4.7 4.7-1.4 1.4L13 7.41V15a1 1 0 0 1-1 1zM5 19h14v2H5z" />
-        </svg>
-        Subir lista manuscrita
-      </button>
+      <div className={className}>
+        <button
+          type="button"
+          onClick={() => setAbierto(true)}
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+        >
+          {/* Documento con flecha de subida: comunica "subir foto de una lista". */}
+          <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-7-7zm0 2 5 5h-5V4zM8 15l4-4 4 4h-3v4h-2v-4H8z" />
+          </svg>
+          Subir lista manuscrita
+        </button>
+        <p className="mt-1.5 max-w-xs text-xs text-slate-500">
+          ¿Tienes una foto de una lista de un hospital (ingresados, traslados o fallecidos)? Súbela aquí y la convertimos en digital.
+        </p>
+      </div>
 
       {abierto && (
         <Modal onClose={cerrar} label="Subir lista manuscrita">

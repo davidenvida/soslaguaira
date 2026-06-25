@@ -7,6 +7,7 @@ import { atrapadoEstado } from './mapColors';
 import { atrapadoIcon, clusterIcon } from './markerIcons';
 import { agruparPorProximidad } from './clustering';
 import ClusterModal from './ClusterModal';
+import DetalleReporte from './DetalleReporte';
 import PopupFoto from './PopupFoto';
 import { resolveFoto, contactoNombre, cantidadPersonas, hasLatLng } from './fields';
 
@@ -27,10 +28,29 @@ const toItem = (a) => {
     subtitulo: [a.edificio, a.direccion].filter(Boolean).join(', '),
     badgeLabel: est.label,
     badgeColor: est.color,
+    raw: a,
   };
 };
 
-function MarcadorAtrapado({ a }) {
+// Detalle para el modal genérico al seleccionar un atrapado del cluster.
+const toDetalle = (a) => {
+  const est = atrapadoEstado(a.estado);
+  const ubic = [a.edificio, a.piso && `piso ${a.piso}`, a.direccion].filter(Boolean).join(', ');
+  return {
+    titulo: tituloAtrapado(a),
+    fotoSrc: resolveFoto(a),
+    fotoVariant: 'persona',
+    badge: { label: est.label, color: est.color },
+    filas: [
+      { label: 'Ubicación', value: ubic },
+      { label: 'Personas', value: cantidadPersonas(a) },
+      { label: 'Descripción', value: a.descripcion },
+      { label: 'Contacto', value: contactoNombre(a) },
+    ],
+  };
+};
+
+function MarcadorAtrapado({ a, onVerDetalle }) {
   const est = atrapadoEstado(a.estado);
   const foto = resolveFoto(a);
   const cant = cantidadPersonas(a);
@@ -67,6 +87,13 @@ function MarcadorAtrapado({ a }) {
               <a href={wazeUrl(a.lat, a.lng)} target="_blank" rel="noreferrer">Waze</a>
               <a href={gmapsUrl(a.lat, a.lng)} target="_blank" rel="noreferrer">Google Maps</a>
             </div>
+            <button
+              type="button"
+              onClick={() => onVerDetalle?.(a)}
+              className="mt-2 w-full rounded-md bg-red-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              Ver toda la información
+            </button>
           </div>
         </div>
       </Popup>
@@ -76,6 +103,7 @@ function MarcadorAtrapado({ a }) {
 
 export default function AtrapadosLayer({ atrapados = [], estadoFiltro = 'todos' }) {
   const [modal, setModal] = useState(null);
+  const [detalle, setDetalle] = useState(null);
 
   const grupos = useMemo(() => {
     const visibles = atrapados
@@ -89,7 +117,7 @@ export default function AtrapadosLayer({ atrapados = [], estadoFiltro = 'todos' 
       <LayerGroup>
         {grupos.map((g) =>
           g.items.length === 1 ? (
-            <MarcadorAtrapado key={g.items[0].id} a={g.items[0]} />
+            <MarcadorAtrapado key={g.items[0].id} a={g.items[0]} onVerDetalle={setDetalle} />
           ) : (
             <Marker
               key={g.key}
@@ -103,7 +131,15 @@ export default function AtrapadosLayer({ atrapados = [], estadoFiltro = 'todos' 
           ),
         )}
       </LayerGroup>
-      {modal && <ClusterModal titulo={modal.titulo} items={modal.items} onClose={() => setModal(null)} />}
+      {modal && (
+        <ClusterModal
+          titulo={modal.titulo}
+          items={modal.items}
+          onClose={() => setModal(null)}
+          onSelect={(a) => setDetalle(a)}
+        />
+      )}
+      {detalle && <DetalleReporte {...toDetalle(detalle)} onClose={() => setDetalle(null)} />}
     </>
   );
 }

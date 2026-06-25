@@ -40,7 +40,7 @@ const toItem = (d) => {
   };
 };
 
-function MarcadorDesaparecido({ d, lat, lng, destacado }) {
+function MarcadorDesaparecido({ d, lat, lng, destacado, onVerDetalle }) {
   const ref = useRef(null);
   useEffect(() => {
     if (destacado && ref.current) ref.current.openPopup();
@@ -91,6 +91,13 @@ function MarcadorDesaparecido({ d, lat, lng, destacado }) {
                 </a>
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => onVerDetalle?.(d)}
+              className="mt-2 w-full rounded-md bg-pink-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-pink-700"
+            >
+              Ver toda la información
+            </button>
           </div>
         </div>
       </Popup>
@@ -137,6 +144,7 @@ export default function DesaparecidosLayer({
               lat={g.lat}
               lng={g.lng}
               destacado={destacarId != null && String(g.items[0].id) === String(destacarId)}
+              onVerDetalle={setDetalle}
             />
           ) : (
             <Marker

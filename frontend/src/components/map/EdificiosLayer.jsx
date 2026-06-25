@@ -7,6 +7,7 @@ import { edificioEstado } from './mapColors';
 import { edificioIcon, clusterIcon } from './markerIcons';
 import { agruparPorProximidad } from './clustering';
 import ClusterModal from './ClusterModal';
+import DetalleReporte from './DetalleReporte';
 import PopupFoto from './PopupFoto';
 import { resolveFoto, atrapadosEstimados, hasLatLng } from './fields';
 
@@ -21,10 +22,29 @@ const toItem = (e) => {
     subtitulo: e.direccion || '',
     badgeLabel: est.label,
     badgeColor: est.color,
+    raw: e,
   };
 };
 
-function MarcadorEdificio({ e }) {
+// Detalle para el modal genérico al seleccionar un edificio del cluster.
+const toDetalle = (e) => {
+  const est = edificioEstado(e.estado);
+  const estimados = atrapadosEstimados(e);
+  return {
+    titulo: e.nombre || 'Edificio',
+    fotoSrc: resolveFoto(e),
+    fotoVariant: 'edificio',
+    badge: { label: est.label, color: est.color },
+    filas: [
+      { label: 'Dirección', value: e.direccion },
+      { label: 'Atrapados estimados', value: estimados != null ? String(estimados) : '' },
+      { label: 'Descripción', value: e.descripcion },
+      { label: 'Reportante', value: e.reportante },
+    ],
+  };
+};
+
+function MarcadorEdificio({ e, onVerDetalle }) {
   const est = edificioEstado(e.estado);
   const foto = resolveFoto(e);
   const estimados = atrapadosEstimados(e);
@@ -57,6 +77,13 @@ function MarcadorEdificio({ e }) {
                 </div>
               )}
               {e.descripcion && <div className="sos-popup__row">{e.descripcion}</div>}
+              <button
+                type="button"
+                onClick={() => onVerDetalle?.(e)}
+                className="mt-2 w-full rounded-md bg-orange-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-orange-700"
+              >
+                Ver toda la información
+              </button>
             </div>
           </div>
         </Popup>
@@ -67,6 +94,7 @@ function MarcadorEdificio({ e }) {
 
 export default function EdificiosLayer({ edificios = [], estadoFiltro = 'todos' }) {
   const [modal, setModal] = useState(null);
+  const [detalle, setDetalle] = useState(null);
 
   const grupos = useMemo(() => {
     const visibles = edificios
@@ -80,7 +108,7 @@ export default function EdificiosLayer({ edificios = [], estadoFiltro = 'todos' 
       <LayerGroup>
         {grupos.map((g) =>
           g.items.length === 1 ? (
-            <MarcadorEdificio key={g.items[0].id} e={g.items[0]} />
+            <MarcadorEdificio key={g.items[0].id} e={g.items[0]} onVerDetalle={setDetalle} />
           ) : (
             <Marker
               key={g.key}
@@ -93,7 +121,15 @@ export default function EdificiosLayer({ edificios = [], estadoFiltro = 'todos' 
           ),
         )}
       </LayerGroup>
-      {modal && <ClusterModal titulo={modal.titulo} items={modal.items} onClose={() => setModal(null)} />}
+      {modal && (
+        <ClusterModal
+          titulo={modal.titulo}
+          items={modal.items}
+          onClose={() => setModal(null)}
+          onSelect={(e) => setDetalle(e)}
+        />
+      )}
+      {detalle && <DetalleReporte {...toDetalle(detalle)} onClose={() => setDetalle(null)} />}
     </>
   );
 }
