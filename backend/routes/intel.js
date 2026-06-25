@@ -90,7 +90,11 @@ router.post('/personas', async (req, res, next) => {
         parroquia         = COALESCE(EXCLUDED.parroquia, personas_intel.parroquia),
         sector_o_edificio = COALESCE(EXCLUDED.sector_o_edificio, personas_intel.sector_o_edificio),
         descripcion       = COALESCE(EXCLUDED.descripcion, personas_intel.descripcion),
-        foto_url          = COALESCE(EXCLUDED.foto_url, personas_intel.foto_url),
+        foto_url          = CASE
+                              WHEN personas_intel.foto_url LIKE '/uploads/%'
+                              THEN personas_intel.foto_url
+                              ELSE COALESCE(EXCLUDED.foto_url, personas_intel.foto_url)
+                            END,
         reportante        = COALESCE(EXCLUDED.reportante, personas_intel.reportante),
         relacion          = COALESCE(EXCLUDED.relacion, personas_intel.relacion),
         contacto          = COALESCE(EXCLUDED.contacto, personas_intel.contacto),
