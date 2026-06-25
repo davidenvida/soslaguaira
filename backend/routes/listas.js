@@ -377,6 +377,34 @@ router.get('/:id', adminGate, async (req, res, next) => {
   }
 });
 
+// PATCH /api/listas/:id  -> actualiza fuente/tipo/descripcion (admin). Normaliza nombres de
+// hospital sin re-subir la lista. La coincidencia/filtro publico dependen de tipo, asi que
+// corregir fuente unifica el dropdown de hospitales.
+router.patch('/:id', adminGate, async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const b = req.body || {};
+    const sets = [];
+    const params = [];
+    const addSet = (c, v) => { params.push(v); sets.push(`${c} = $${params.length}`); };
+    if (b.fuente !== undefined) addSet('fuente', cleanStr(b.fuente, 200));
+    if (b.tipo !== undefined) addSet('tipo', cleanStr(b.tipo, 60));
+    if (b.descripcion !== undefined) addSet('descripcion', cleanStr(b.descripcion, 1000));
+    if (!sets.length) return fail(res, 'No hay campos para actualizar (fuente/tipo/descripcion).');
+    params.push(id);
+    const { rows } = await query(
+      `UPDATE listas_manuscritas SET ${sets.join(', ')} WHERE id = $${params.length}
+       RETURNING id, fuente, tipo, descripcion, foto_url, total_entradas AS total, created_at AS fecha`,
+      params
+    );
+    if (!rows.length) return fail(res, 'Lista no encontrada.', 404);
+    return ok(res, rows[0], 'Lista actualizada.');
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /api/listas/:id  -> elimina una lista y sus entradas (admin). Borra la imagen local.
 router.delete('/:id', adminGate, async (req, res, next) => {
   try {
