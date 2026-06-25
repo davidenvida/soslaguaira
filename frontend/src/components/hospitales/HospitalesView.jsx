@@ -5,20 +5,26 @@
 // lista; el buscador filtra DENTRO de la lista por nombre o cédula. Pública.
 import { useEffect, useMemo, useState } from 'react';
 import http from '../../api';
+import PersonaDetalle from '../desaparecidos/PersonaDetalle';
 
 const unwrap = (r) => r.data?.data ?? r.data;
 
 // data = { items:[{ nombre, cedula, hospital, estado, lugar, coincidencia:{hay, reporte} }],
 //          total, ..., hospitales:[{hospital,total,tipos}] }  (hospitales para los botones).
-const fetchPersonas = (hospital) =>
+const fetchPersonas = (hospital, coinc) =>
   http
     .get('/hospitales/personas', {
-      params: { ...(hospital && hospital !== 'todos' ? { hospital } : {}), limit: 500 },
+      params: {
+        ...(hospital && hospital !== 'todos' ? { hospital } : {}),
+        ...(coinc === 'con' || coinc === 'sin' ? { coincidencia: coinc } : {}),
+        limit: 500,
+      },
     })
     .then(unwrap);
 
 // Coincidencia con un reporte del directorio: it.coincidencia.hay (bool).
 const coincide = (p) => Boolean(p?.coincidencia?.hay);
+const reporteId = (p) => p?.coincidencia?.reporte?.id;
 
 export default function HospitalesView() {
   const [hospitales, setHospitales] = useState([]);
@@ -26,11 +32,14 @@ export default function HospitalesView() {
   const [personas, setPersonas] = useState([]);
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [q, setQ] = useState('');
+  const [coincFiltro, setCoincFiltro] = useState('todas'); // todas | con | sin
+  const [detalle, setDetalle] = useState(null); // reporte abierto (PersonaDetalle)
+  const [cargandoReporte, setCargandoReporte] = useState(false);
 
   useEffect(() => {
     let vivo = true;
     setStatus('loading');
-    fetchPersonas(sel)
+    fetchPersonas(sel, coincFiltro)
       .then((data) => {
         if (!vivo) return;
         setPersonas(Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []);
@@ -42,19 +51,36 @@ export default function HospitalesView() {
     return () => {
       vivo = false;
     };
-  }, [sel]);
+  }, [sel, coincFiltro]);
 
   const totalTodos = useMemo(() => hospitales.reduce((a, h) => a + (h.total || 0), 0), [hospitales]);
 
   const filtradas = useMemo(() => {
     const t = q.trim().toLowerCase();
-    if (!t) return personas;
-    return personas.filter(
-      (p) =>
-        (p.nombre || '').toLowerCase().includes(t) ||
-        String(p.cedula || '').toLowerCase().includes(t),
-    );
-  }, [personas, q]);
+    return personas.filter((p) => {
+      // Filtro de coincidencia (además del param del server, por seguridad).
+      if (coincFiltro === 'con' && !coincide(p)) return false;
+      if (coincFiltro === 'sin' && coincide(p)) return false;
+      if (!t) return true;
+      return (p.nombre || '').toLowerCase().includes(t) || String(p.cedula || '').toLowerCase().includes(t);
+    });
+  }, [personas, q, coincFiltro]);
+
+  // Abre el reporte del desaparecido que matcheó (acción de reunificación).
+  const abrirReporte = async (p) => {
+    const id = reporteId(p);
+    if (id == null || cargandoReporte) return;
+    setCargandoReporte(true);
+    try {
+      const persona = await http.get(`/intel/personas/${id}`).then(unwrap);
+      setDetalle(persona || { id, ...(p.coincidencia?.reporte || {}) });
+    } catch {
+      // Fallback: abre con lo poco que trae la coincidencia.
+      setDetalle({ id, ...(p.coincidencia?.reporte || {}) });
+    } finally {
+      setCargandoReporte(false);
+    }
+  };
 
   return (
     <section aria-label="Hospitales" className="mx-auto flex h-full w-full max-w-4xl flex-col px-3 pb-2 pt-3 sm:px-4">
@@ -80,16 +106,29 @@ export default function HospitalesView() {
         Personas ingresadas, trasladadas o heridas reportadas por los hospitales. Verde = coincide con un reporte del directorio.
       </p>
 
-      {/* Buscador dentro de la lista */}
-      <label htmlFor="hosp-q" className="sr-only">Buscar por nombre o cédula</label>
-      <input
-        id="hosp-q"
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Buscar por nombre o cédula…"
-        className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-      />
+      {/* Buscador dentro de la lista + filtro de coincidencia */}
+      <div className="mb-3 flex gap-2">
+        <label htmlFor="hosp-q" className="sr-only">Buscar por nombre o cédula</label>
+        <input
+          id="hosp-q"
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar por nombre o cédula…"
+          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+        />
+        <label htmlFor="hosp-coinc" className="sr-only">Filtrar por coincidencia</label>
+        <select
+          id="hosp-coinc"
+          value={coincFiltro}
+          onChange={(e) => setCoincFiltro(e.target.value)}
+          className="shrink-0 rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+        >
+          <option value="todas">Todas</option>
+          <option value="con">Con coincidencia</option>
+          <option value="sin">Sin coincidencia</option>
+        </select>
+      </div>
 
       {/* Lista / tabla scrollable */}
       <div className="min-h-0 flex-1 overflow-auto rounded-xl ring-1 ring-slate-200" aria-live="polite">
@@ -109,28 +148,50 @@ export default function HospitalesView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtradas.map((p, i) => (
-                <tr key={p.id ?? `${p.cedula}-${i}`} className="bg-white">
-                  <td className="px-3 py-2 font-medium text-slate-900">{p.nombre || '—'}</td>
-                  <td className="px-3 py-2 tabular-nums text-slate-600">{p.cedula || '—'}</td>
-                  <td className="px-3 py-2 text-slate-600">{p.hospital || '—'}</td>
-                  <td className="px-3 py-2">
-                    {coincide(p) ? (
-                      <span className="inline-block whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                        Coincide con un reporte
-                      </span>
-                    ) : (
-                      <span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
-                        Sin coincidencia
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {filtradas.map((p, i) => {
+                const clickable = coincide(p);
+                return (
+                  <tr
+                    key={p.id ?? `${p.cedula}-${i}`}
+                    onClick={clickable ? () => abrirReporte(p) : undefined}
+                    {...(clickable
+                      ? {
+                          role: 'button',
+                          tabIndex: 0,
+                          'aria-label': `Ver reporte de ${p.nombre || 'la persona'}`,
+                          onKeyDown: (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              abrirReporte(p);
+                            }
+                          },
+                        }
+                      : {})}
+                    className={`bg-white ${clickable ? 'cursor-pointer hover:bg-emerald-50' : ''}`}
+                  >
+                    <td className="px-3 py-2 font-medium text-slate-900">{p.nombre || '—'}</td>
+                    <td className="px-3 py-2 tabular-nums text-slate-600">{p.cedula || '—'}</td>
+                    <td className="px-3 py-2 text-slate-600">{p.hospital || '—'}</td>
+                    <td className="px-3 py-2">
+                      {clickable ? (
+                        <span className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                          Coincide con un reporte <span aria-hidden="true">›</span>
+                        </span>
+                      ) : (
+                        <span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                          Sin coincidencia
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
+
+      {detalle && <PersonaDetalle persona={detalle} onClose={() => setDetalle(null)} />}
     </section>
   );
 }

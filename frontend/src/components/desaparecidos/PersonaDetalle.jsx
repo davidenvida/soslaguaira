@@ -202,6 +202,11 @@ export default function PersonaDetalle({ persona, onClose, onUpdate, onVerEnMapa
             <Fila label="Última ubicación">{ubicacion(persona)}</Fila>
             <Fila label="Sector / edificio">{sector(persona)}</Fila>
             <Fila label="Contacto">{contacto(persona)}</Fila>
+            <Fila label="Reportante">
+              {persona.reportante
+                ? `${persona.reportante}${persona.relacion ? ` (${persona.relacion})` : ''}`
+                : ''}
+            </Fila>
             {persona.descripcion && <p className="text-sm leading-snug text-slate-700">{persona.descripcion}</p>}
             <Fila label="Reporte">{fmtFecha(persona.fecha_reporte || persona.fechaReporte)}</Fila>
             {yaASalvo && (persona.confirmado_por || persona.confirmadoPor) && (
