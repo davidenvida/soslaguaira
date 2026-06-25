@@ -170,6 +170,10 @@ router.get('/personas', async (req, res, next) => {
     const incluirDups = inclDup === 'true' || inclDup === '1';
     if (!incluirDups) conds.push('duplicate_of IS NULL');
 
+    // Filtro opcional de flaggeadas (takedown): flagged=false oculta, flagged=true = cola de revision.
+    if (req.query.flagged === 'false') conds.push('flagged = false');
+    else if (req.query.flagged === 'true') conds.push('flagged = true');
+
     if (estado) {
       if (!oneOf(estado, ESTADOS_INTEL)) return fail(res, "Filtro 'estado' invalido.");
       params.push(estado);
@@ -379,6 +383,28 @@ router.patch('/personas/:id', async (req, res, next) => {
 
     if (!row) return fail(res, 'No hay cambios para actualizar.');
     return ok(res, row, 'Registro actualizado.');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/intel/personas/:id/flag  { motivo }
+// Takedown: marca la ficha para revision/remocion humana. NO borra.
+router.post('/personas/:id/flag', async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+
+    const motivo = cleanStr((req.body || {}).motivo, 1000);
+    const { rows } = await query(
+      `UPDATE personas_intel
+         SET flagged = true, flag_motivo = $1, flagged_at = now()
+       WHERE id = $2
+       RETURNING *`,
+      [motivo, id]
+    );
+    if (!rows.length) return fail(res, 'Ficha no encontrada.', 404);
+    return ok(res, rows[0], 'Ficha marcada para revision. Un humano la revisara.', 201);
   } catch (err) {
     next(err);
   }
