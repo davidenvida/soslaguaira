@@ -31,7 +31,10 @@ export function MapDataProvider({ children, pollMs = 20000, useMock = false, des
   const [source, setSource] = useState('loading'); // 'loading' | 'api' | 'mock'
   const [visibility, setVisibility] = useState(initialVisibility);
   const [filters, setFilters] = useState(initialFilters);
+  const [heatmap, setHeatmap] = useState(false); // mapa de calor (densidad) vs marcadores
   const mounted = useRef(true);
+
+  const toggleHeatmap = useCallback(() => setHeatmap((h) => !h), []);
 
   const allMock = useCallback(() => {
     setData({
@@ -110,8 +113,8 @@ export function MapDataProvider({ children, pollMs = 20000, useMock = false, des
   );
 
   const value = useMemo(
-    () => ({ data, source, visibility, filters, counts, toggleLayer, setFilter, refresh: load, destacarId }),
-    [data, source, visibility, filters, counts, toggleLayer, setFilter, load, destacarId],
+    () => ({ data, source, visibility, filters, counts, toggleLayer, setFilter, refresh: load, destacarId, heatmap, toggleHeatmap }),
+    [data, source, visibility, filters, counts, toggleLayer, setFilter, load, destacarId, heatmap, toggleHeatmap],
   );
 
   return <MapDataContext.Provider value={value}>{children}</MapDataContext.Provider>;

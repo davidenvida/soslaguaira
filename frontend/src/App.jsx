@@ -80,7 +80,7 @@ function AppInner({ setDestacarId }) {
     setCoincInicial('con')
     setVista('hospitales')
   }, [])
-  const { refresh } = useMapData()
+  const { refresh, heatmap, toggleHeatmap } = useMapData()
   const dialogRef = useRef(null)
 
   const cerrar = useCallback(() => {
@@ -303,6 +303,20 @@ function AppInner({ setDestacarId }) {
                 <LayersPanel />
               </div>
             </div>
+
+            {/* Toggle Mapa de calor (densidad de reportes), a la derecha. */}
+            <button
+              onClick={toggleHeatmap}
+              aria-pressed={heatmap}
+              className={`absolute bottom-24 right-3 z-[650] inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-sm font-bold shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+                heatmap ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
+                <path d="M12 2s6 5.5 6 10a6 6 0 0 1-12 0c0-1.6.6-3.1 1.4-4.4C8 9.7 9 11 9 11s-.5-3 1-5c.8 1 2 2.5 2 2.5S12.5 5 12 2z" />
+              </svg>
+              {heatmap ? 'Ver marcadores' : 'Mapa de calor'}
+            </button>
 
             {/* Barra de acciones inferior */}
             <nav
