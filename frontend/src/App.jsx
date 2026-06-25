@@ -6,6 +6,7 @@ import PersonSearch from './components/search/PersonSearch'
 import MatchView from './components/search/MatchView'
 import RescueTriage from './components/rescue/RescueTriage'
 import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecidos'
+import HospitalesView from './components/hospitales/HospitalesView'
 import BuzonSugerencias from './components/ui/BuzonSugerencias'
 import StatsPage from './components/stats/StatsPage'
 import SugerenciasPage from './components/admin/SugerenciasPage'
@@ -184,6 +185,11 @@ function AppInner({ setDestacarId }) {
               <path d="M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
             </svg>
           </IconSegBtn>
+          <IconSegBtn activo={vista === 'hospitales'} onClick={() => setVista('hospitales')} label="Vista hospitales">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
+              <path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z" />
+            </svg>
+          </IconSegBtn>
         </div>
         <p className="line-clamp-2 min-w-0 flex-1 text-[11px] leading-tight text-slate-600 sm:text-xs">
           <span className="font-bold text-indigo-700">Reporta y en segundos</span> cruzamos tu reporte con cientos de pacientes ingresados en hospitales.
@@ -227,6 +233,11 @@ function AppInner({ setDestacarId }) {
               </div>
             </nav>
           </>
+        ) : vista === 'hospitales' ? (
+          /* Vista HOSPITALES: botones de hospital + buscador (reunificación) */
+          <div className="absolute inset-0">
+            <HospitalesView />
+          </div>
         ) : (
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
           <div className="absolute inset-0 overflow-y-auto">

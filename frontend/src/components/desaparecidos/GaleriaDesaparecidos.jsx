@@ -14,6 +14,7 @@ import * as api from '../../api';
 import useDebounce from '../search/useDebounce';
 import DesaparecidoCard from './DesaparecidoCard';
 import EstadisticasDirectorio from './EstadisticasDirectorio';
+import BusquedaUnificada from './BusquedaUnificada';
 import { ESTADO_LABEL } from './estados';
 import { mockDesaparecidos } from './mockDesaparecidos';
 
@@ -70,7 +71,12 @@ export default function GaleriaDesaparecidos({ onVerEnMapa }) {
     setPage(1);
   }, [filtros]);
 
+  // Con q de 2+ caracteres se activa la búsqueda unificada (reportes+hospitales),
+  // que hace su propio fetch; la grilla del directorio no carga en ese modo.
+  const enBusqueda = filtros.q.trim().length >= 2;
+
   useEffect(() => {
+    if (enBusqueda) return undefined;
     const id = ++reqId.current;
     let cancelado = false;
     const esPrimeraPagina = page === 1;
@@ -229,43 +235,50 @@ export default function GaleriaDesaparecidos({ onVerEnMapa }) {
         </div>
       </div>
 
-      {/* Estados accesibles */}
-      <div aria-live="polite" className="min-h-[1.25rem]">
-        {status === 'loading' && (
-          <p className="py-8 text-center text-sm text-slate-500">Cargando reportes…</p>
-        )}
-        {status === 'error' && (
-          <p className="py-8 text-center text-sm text-red-600">No se pudieron cargar los reportes.</p>
-        )}
-        {vacio && (
-          <p className="py-8 text-center text-sm text-slate-500">
-            No hay personas que coincidan con la búsqueda.
-          </p>
-        )}
-      </div>
+      {enBusqueda ? (
+        // Búsqueda unificada: reportes del directorio + coincidencias en hospitales.
+        <BusquedaUnificada q={filtros.q} onUpdate={handleUpdate} onVerEnMapa={onVerEnMapa} />
+      ) : (
+        <>
+          {/* Estados accesibles */}
+          <div aria-live="polite" className="min-h-[1.25rem]">
+            {status === 'loading' && (
+              <p className="py-8 text-center text-sm text-slate-500">Cargando reportes…</p>
+            )}
+            {status === 'error' && (
+              <p className="py-8 text-center text-sm text-red-600">No se pudieron cargar los reportes.</p>
+            )}
+            {vacio && (
+              <p className="py-8 text-center text-sm text-slate-500">
+                No hay personas que coincidan con la búsqueda.
+              </p>
+            )}
+          </div>
 
-      {/* Grilla */}
-      {visibles.length > 0 && (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {visibles.map((p) => (
-            <li key={p.id ?? `${p.nombre_completo}-${p.fecha_reporte}`}>
-              <DesaparecidoCard persona={p} onUpdate={handleUpdate} onVerEnMapa={onVerEnMapa} />
-            </li>
-          ))}
-        </ul>
-      )}
+          {/* Grilla */}
+          {visibles.length > 0 && (
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              {visibles.map((p) => (
+                <li key={p.id ?? `${p.nombre_completo}-${p.fecha_reporte}`}>
+                  <DesaparecidoCard persona={p} onUpdate={handleUpdate} onVerEnMapa={onVerEnMapa} />
+                </li>
+              ))}
+            </ul>
+          )}
 
-      {/* Sentinela del scroll infinito + indicador de carga de más páginas. */}
-      {hasMore && <div ref={sentinelaRef} aria-hidden="true" className="h-px w-full" />}
+          {/* Sentinela del scroll infinito + indicador de carga de más páginas. */}
+          {hasMore && <div ref={sentinelaRef} aria-hidden="true" className="h-px w-full" />}
 
-      {cargando && visibles.length > 0 && (
-        <div className="flex items-center justify-center gap-2 py-4 text-sm text-slate-500" aria-live="polite">
-          <svg className="h-4 w-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
-          </svg>
-          Cargando más…
-        </div>
+          {cargando && visibles.length > 0 && (
+            <div className="flex items-center justify-center gap-2 py-4 text-sm text-slate-500" aria-live="polite">
+              <svg className="h-4 w-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
+              </svg>
+              Cargando más…
+            </div>
+          )}
+        </>
       )}
     </section>
   );

@@ -47,7 +47,14 @@ const normalizarListas = (res) => {
   return Array.isArray(arr) ? arr : [];
 };
 
-// Tabla simple para el detalle público (sin cédula ni coincidencias).
+// Filtra filas/entradas por nombre en vivo (buscador dentro de una lista).
+const filtrarPorNombre = (filas, q) => {
+  const t = (q || '').trim().toLowerCase();
+  if (!t) return filas;
+  return (filas || []).filter((f) => (f.nombre || '').toLowerCase().includes(t));
+};
+
+// Tabla simple para el detalle público (con cédula; sin coincidencias).
 function TablaPublica({ entradas }) {
   if (!entradas || entradas.length === 0) {
     return <p className="text-sm text-slate-500">No hay personas en esta lista.</p>;
@@ -55,14 +62,19 @@ function TablaPublica({ entradas }) {
   return (
     <ul className="divide-y divide-slate-100">
       {entradas.map((e, i) => (
-        <li key={i} className="flex items-center gap-2 py-2 text-sm">
-          <span className="min-w-0 flex-1 truncate text-slate-800">{e.nombre || '—'}</span>
+        <li key={i} className="flex items-start gap-2 py-2 text-sm">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-slate-800">{e.nombre || '—'}</div>
+            <div className="flex flex-wrap gap-x-2 text-xs text-slate-400">
+              {e.cedula && <span className="tabular-nums">C.I. {e.cedula}</span>}
+              {e.lugar && <span>{e.lugar}</span>}
+            </div>
+          </div>
           {e.estado && (
             <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${ESTADO_LISTA[e.estado] || ESTADO_LISTA.desconocido}`}>
               {e.estado}
             </span>
           )}
-          {e.lugar && <span className="shrink-0 text-xs text-slate-400">{e.lugar}</span>}
         </li>
       ))}
     </ul>
@@ -151,6 +163,7 @@ export default function VerListasSubidas({ className = '' }) {
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [borrando, setBorrando] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const [filtroDetalle, setFiltroDetalle] = useState(''); // buscador dentro de una lista
 
   useEffect(() => {
     if (!abierto) return undefined;
@@ -170,6 +183,7 @@ export default function VerListasSubidas({ className = '' }) {
   }, [abierto, token]);
 
   const abrirDetalle = async (l) => {
+    setFiltroDetalle('');
     setCargandoDetalle(true);
     try {
       const res = await detalle(l.id, token);
@@ -254,10 +268,23 @@ export default function VerListasSubidas({ className = '' }) {
                 <p className="text-sm text-slate-500">Cargando…</p>
               ) : sel.error ? (
                 <p className="text-sm text-red-600">No se pudo cargar el detalle.</p>
-              ) : esAdmin ? (
-                <TablaPersonas filas={sel.filas} />
               ) : (
-                <TablaPublica entradas={sel.entradas} />
+                <>
+                  <label htmlFor="detalle-q" className="sr-only">Buscar en esta lista</label>
+                  <input
+                    id="detalle-q"
+                    type="search"
+                    value={filtroDetalle}
+                    onChange={(e) => setFiltroDetalle(e.target.value)}
+                    placeholder="Buscar un nombre en esta lista…"
+                    className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                  />
+                  {esAdmin ? (
+                    <TablaPersonas filas={filtrarPorNombre(sel.filas, filtroDetalle)} />
+                  ) : (
+                    <TablaPublica entradas={filtrarPorNombre(sel.entradas, filtroDetalle)} />
+                  )}
+                </>
               )}
 
               {esAdmin && !cargandoDetalle && (
@@ -299,8 +326,8 @@ export default function VerListasSubidas({ className = '' }) {
                           </div>
                         </div>
                         {l.total != null && (
-                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600">
-                            {l.total}
+                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                            <span className="tabular-nums">{l.total}</span> {l.total === 1 ? 'persona' : 'personas'}
                           </span>
                         )}
                         <span className="shrink-0 text-slate-300" aria-hidden="true">›</span>
