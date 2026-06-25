@@ -7,6 +7,7 @@ import {
 } from '../utils/validate.js';
 import { buildGeocoder } from '../utils/geocode.js';
 import { evaluarAlertas } from '../utils/alertas.js';
+import { adminGate } from '../middleware/adminGate.js';
 
 const router = Router();
 
@@ -341,6 +342,21 @@ router.get('/personas/:id', async (req, res, next) => {
     const esAdmin = process.env.ADMIN_TOKEN && req.get('x-admin-token') === process.env.ADMIN_TOKEN;
     if (row.estado === 'fallecido' && !esAdmin) return fail(res, 'Persona no encontrada.', 404);
     return ok(res, row, 'Ficha de persona.');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/intel/personas/:id -> elimina un registro erroneo (admin). Libera duplicate_of que lo apunten.
+router.delete('/personas/:id', adminGate, async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const exists = (await query('SELECT id FROM personas_intel WHERE id = $1', [id])).rows[0];
+    if (!exists) return fail(res, 'Registro no encontrado.', 404);
+    await query('UPDATE personas_intel SET duplicate_of = NULL WHERE duplicate_of = $1', [id]);
+    await query('DELETE FROM personas_intel WHERE id = $1', [id]);
+    return ok(res, { id }, 'Registro eliminado.');
   } catch (err) {
     next(err);
   }
