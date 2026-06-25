@@ -202,6 +202,11 @@ router.get('/personas', async (req, res, next) => {
       params.push(estado);
       conds.push(`estado = $${params.length}`);
     }
+    if (req.query.origen) {
+      if (!oneOf(req.query.origen, ORIGENES)) return fail(res, "Filtro 'origen' invalido (osint|app).");
+      params.push(req.query.origen);
+      conds.push(`origen = $${params.length}`);
+    }
     if (parroquia && String(parroquia).trim()) {
       params.push(`%${String(parroquia).trim()}%`);
       conds.push(`parroquia ILIKE $${params.length}`);
@@ -303,7 +308,7 @@ router.get('/personas/duplicados', async (req, res, next) => {
 router.get('/personas/stats', async (req, res, next) => {
   try {
     const rows = (await query(
-      `SELECT estado, foto_url, lat, lng, sector_o_edificio, ultima_ubicacion, parroquia
+      `SELECT estado, origen, foto_url, lat, lng, sector_o_edificio, ultima_ubicacion, parroquia
        FROM personas_intel WHERE duplicate_of IS NULL AND estado <> 'fallecido'`
     )).rows;
 
@@ -314,17 +319,19 @@ router.get('/personas/stats', async (req, res, next) => {
     const por_estado = {
       desaparecido: 0, a_salvo: 0, herido: 0, visto_con_vida: 0, fallecido: 0, atrapado: 0,
     };
+    const por_origen = { osint: 0, app: 0 }; // equipo (osint) vs usuarios externos (app)
     let con_foto = 0;
     let geolocalizados = 0;
 
     for (const r of rows) {
       if (r.estado in por_estado) por_estado[r.estado] += 1;
+      if (r.origen in por_origen) por_origen[r.origen] += 1;
       if (r.foto_url) con_foto += 1;
       const geocodable = (r.lat != null && r.lng != null) || geocode(r).lat != null;
       if (geocodable) geolocalizados += 1;
     }
 
-    return ok(res, { total: rows.length, por_estado, con_foto, geolocalizados }, 'Estadisticas del directorio.');
+    return ok(res, { total: rows.length, por_estado, por_origen, con_foto, geolocalizados }, 'Estadisticas del directorio.');
   } catch (err) {
     next(err);
   }
