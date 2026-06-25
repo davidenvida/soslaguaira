@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { query } from '../db.js';
+import { pool, query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { writeLimiter } from '../middleware/rateLimit.js';
-import { cleanStr, isNonEmptyString } from '../utils/validate.js';
+import { cleanStr, isNonEmptyString, normalizarCedula } from '../utils/validate.js';
 import { compareNombres } from '../utils/match.js';
 
 const router = Router();
@@ -170,6 +170,68 @@ router.post('/interpretar', writeLimiter, memUpload.single('foto'), async (req, 
     return ok(res, { personas: conMatch, total: conMatch.length, tipo_lista: estadoLista }, 'Lista interpretada.');
   } catch (err) {
     if (err.status) return fail(res, err.message, err.status);
+    next(err);
+  }
+});
+
+// PRIVACIDAD: el roster (listas_manuscritas/lista_entradas) son datos de salud sin
+// consentimiento y con errores de OCR -> NUNCA publicos. Estos endpoints requieren admin.
+// NO existe ningun endpoint publico que lea lista_entradas; el roster solo alimenta el
+// cruce interno (buscarAlertas) en la creacion de reportes.
+const adminGate = (req, res, next) => {
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected) return fail(res, 'Endpoint admin deshabilitado (configurar ADMIN_TOKEN).', 403);
+  if (req.get('x-admin-token') !== expected) return fail(res, 'No autorizado.', 401);
+  return next();
+};
+
+// POST /api/listas  -> persiste una lista YA REVISADA (motor de reunificacion hacia adelante).
+// body: { fuente, tipo, descripcion, personas:[{nombre, cedula, estado, detalle, lugar}] }
+router.post('/', adminGate, writeLimiter, async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const personas = Array.isArray(b.personas) ? b.personas : [];
+    const validas = personas.filter((p) => p && isNonEmptyString(p.nombre));
+    if (!validas.length) return fail(res, 'La lista no tiene personas con nombre.');
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const lista = (await client.query(
+        `INSERT INTO listas_manuscritas (fuente, tipo, descripcion, total_entradas)
+         VALUES ($1,$2,$3,$4) RETURNING id`,
+        [cleanStr(b.fuente, 200), cleanStr(b.tipo, 60), cleanStr(b.descripcion, 1000), validas.length]
+      )).rows[0];
+
+      for (const p of validas) {
+        await client.query(
+          `INSERT INTO lista_entradas (lista_id, nombre, cedula, estado, detalle, lugar)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [lista.id, cleanStr(p.nombre, 200), normalizarCedula(p.cedula), cleanStr(p.estado, 30), cleanStr(p.detalle, 500), cleanStr(p.lugar, 200)]
+        );
+      }
+      await client.query('COMMIT');
+      return ok(res, { lista_id: lista.id, total: validas.length }, 'Lista guardada.', 201);
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/listas  -> resumen de listas guardadas (admin: metadata, no expone pacientes).
+router.get('/', adminGate, async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, fuente, tipo, descripcion, total_entradas, created_at
+       FROM listas_manuscritas ORDER BY created_at DESC, id DESC`
+    );
+    return ok(res, rows, 'Listas guardadas.');
+  } catch (err) {
     next(err);
   }
 });

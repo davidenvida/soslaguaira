@@ -6,6 +6,7 @@ import {
   isNonEmptyString, oneOf, cleanStr, toIntOrNull, toNumberOrNull, normalizeName, validCoords, normalizarCedula,
 } from '../utils/validate.js';
 import { buildGeocoder } from '../utils/geocode.js';
+import { buscarAlertas } from '../utils/alertas.js';
 
 const router = Router();
 
@@ -151,9 +152,19 @@ router.post('/personas', async (req, res, next) => {
       }
     }
 
+    // Alerta proactiva (solo origen 'app' = reporte de familia, consentido; solo por cedula).
+    const alertas = [];
+    for (const it of valid) {
+      if ((it.origen || 'osint') !== 'app') continue;
+      const ced = normalizarCedula(it.cedula);
+      if (!ced) continue;
+      const hits = await buscarAlertas(query, it.nombre_completo, ced, { soloCedula: true });
+      if (hits.length) alertas.push({ nombre: it.nombre_completo, cedula: ced, coincidencias: hits });
+    }
+
     return ok(
       res,
-      { inserted, updated, ids, rejected },
+      { inserted, updated, ids, rejected, alertas },
       `${inserted} insertado(s), ${updated} actualizado(s), ${rejected.length} rechazado(s).`,
       201
     );

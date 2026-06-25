@@ -6,6 +6,7 @@ import {
   isNonEmptyString, oneOf, cleanStr, toIntOrNull, validCoords, normalizarCedula,
 } from '../utils/validate.js';
 import { matchScore } from '../utils/match.js';
+import { buscarAlertas } from '../utils/alertas.js';
 
 const router = Router();
 
@@ -49,7 +50,12 @@ router.post('/', writeLimiter, async (req, res, next) => {
       normalizarCedula(b.cedula) || (b.cedula ? cleanStr(String(b.cedula).replace(/\D/g, ''), 20) || null : null),
     ];
     const { rows } = await query(sql, params);
-    return ok(res, rows[0], 'Persona registrada.', 201);
+
+    // Alerta proactiva de reunificacion: cruce por cedula contra el roster privado de listas.
+    const ced = normalizarCedula(b.cedula) || (rows[0].cedula || null);
+    const alertas = ced ? await buscarAlertas(query, rows[0].nombre, ced, { soloCedula: true }) : [];
+
+    return ok(res, { ...rows[0], alertas }, 'Persona registrada.', 201);
   } catch (err) {
     next(err);
   }
