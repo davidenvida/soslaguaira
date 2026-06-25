@@ -92,16 +92,39 @@ export default function SubirListaManuscrita({ className = '' }) {
   const [abierto, setAbierto] = useState(false);
   const [foto, setFoto] = useState(null);
   const [tipo, setTipo] = useState('ingresados');
-  const [descripcion, setDescripcion] = useState('');
+  const [fuente, setFuente] = useState(''); // hospital / fuente de la lista (obligatorio)
   const [fase, setFase] = useState('form'); // form | enviando | resultado | error
   const [filas, setFilas] = useState([]);
   const [tipoLista, setTipoLista] = useState('');
+  const [dragActive, setDragActive] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const fileInputRef = useRef(null);
+
+  // Vista previa de la imagen elegida (se libera al cambiar).
+  useEffect(() => {
+    if (!foto) {
+      setPreviewUrl('');
+      return undefined;
+    }
+    const url = URL.createObjectURL(foto);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [foto]);
+
+  const tomarArchivo = (f) => {
+    if (f && f.type.startsWith('image/')) setFoto(f);
+  };
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+    tomarArchivo(e.dataTransfer.files?.[0]);
+  };
 
   const cerrar = () => {
     setAbierto(false);
     setFase('form');
     setFoto(null);
-    setDescripcion('');
+    setFuente('');
     setFilas([]);
     setTipoLista('');
   };
@@ -170,32 +193,63 @@ export default function SubirListaManuscrita({ className = '' }) {
               </button>
             </div>
           ) : (
-            <form onSubmit={enviar} className="space-y-3">
+            <form onSubmit={enviar} className="space-y-4">
+              {/* Zona de arrastrar/elegir foto */}
               <div>
-                <label htmlFor="lista-foto" className="mb-1 block text-xs font-semibold text-slate-600">
-                  Foto de la lista *
-                </label>
+                <span className="mb-1.5 block text-sm font-semibold text-slate-700">1. Foto de la lista</span>
                 <input
+                  ref={fileInputRef}
                   id="lista-foto"
                   type="file"
                   accept="image/*"
-                  required
-                  onChange={(e) => setFoto(e.target.files?.[0] || null)}
-                  className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-700"
+                  className="sr-only"
+                  onChange={(e) => tomarArchivo(e.target.files?.[0])}
                 />
-              </div>
-              <div>
-                <label htmlFor="lista-tipo" className="mb-1 block text-xs font-semibold text-slate-600">Tipo de lista *</label>
-                <select
-                  id="lista-tipo"
-                  value={tipo}
-                  onChange={(e) => setTipo(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+                  onDrop={onDrop}
+                  className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-10 text-center transition ${
+                    dragActive ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 bg-slate-50 hover:border-indigo-400 hover:bg-slate-100'
+                  }`}
                 >
+                  {previewUrl ? (
+                    <>
+                      <img src={previewUrl} alt="Vista previa de la lista" className="max-h-44 rounded-lg object-contain" />
+                      <span className="text-xs text-slate-500">Toca para cambiar la foto</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-12 w-12 text-indigo-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 16a1 1 0 0 1-1-1V7.41L8.7 9.7 7.3 8.3 12 3.6l4.7 4.7-1.4 1.4L13 7.41V15a1 1 0 0 1-1 1zM5 19h14v2H5z" />
+                      </svg>
+                      <span className="text-sm font-bold text-slate-700">Arrastra una foto aquí o toca para elegir</span>
+                      <span className="text-xs text-slate-400">Desde la galería o la cámara de tu teléfono</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Tipo de lista: chips grandes */}
+              <div>
+                <span className="mb-1.5 block text-sm font-semibold text-slate-700">2. Tipo de lista</span>
+                <div className="flex flex-wrap gap-2">
                   {TIPOS.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setTipo(t.value)}
+                      aria-pressed={tipo === t.value}
+                      className={`min-h-[40px] rounded-full px-4 text-sm font-semibold ring-1 transition ${
+                        tipo === t.value ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
               <div>
                 <label htmlFor="lista-desc" className="mb-1 block text-xs font-semibold text-slate-600">Descripción / fuente</label>

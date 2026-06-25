@@ -26,13 +26,14 @@ const fetchPersonas = (hospital, coinc) =>
 const coincide = (p) => Boolean(p?.coincidencia?.hay);
 const reporteId = (p) => p?.coincidencia?.reporte?.id;
 
-export default function HospitalesView() {
+export default function HospitalesView({ coincInicial }) {
   const [hospitales, setHospitales] = useState([]);
   const [sel, setSel] = useState('todos');
   const [personas, setPersonas] = useState([]);
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [q, setQ] = useState('');
-  const [coincFiltro, setCoincFiltro] = useState('todas'); // todas | con | sin
+  // Arranca en 'con' si se entró desde "Posibles reunificaciones".
+  const [coincFiltro, setCoincFiltro] = useState(() => (coincInicial === 'con' ? 'con' : 'todas')); // todas | con | sin
   const [detalle, setDetalle] = useState(null); // reporte abierto (PersonaDetalle)
   const [cargandoReporte, setCargandoReporte] = useState(false);
 
@@ -129,6 +130,13 @@ export default function HospitalesView() {
           <option value="sin">Sin coincidencia</option>
         </select>
       </div>
+
+      {/* Aviso: los matches son por NOMBRE (candidatos), no confirmados. */}
+      {coincFiltro === 'con' && (
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-200" role="note">
+          ⚠ POSIBLES coincidencias por nombre — verificar antes de avisar a la familia.
+        </p>
+      )}
 
       {/* Lista / tabla scrollable */}
       <div className="min-h-0 flex-1 overflow-auto rounded-xl ring-1 ring-slate-200" aria-live="polite">

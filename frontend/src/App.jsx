@@ -71,6 +71,14 @@ function AppInner({ setDestacarId }) {
   const [q, setQ] = useState('')
   const [estadoFiltro, setEstadoFiltro] = useState('')
   const [parroquiaFiltro, setParroquiaFiltro] = useState('')
+  // Al entrar a Hospitales desde "Posibles reunificaciones" arranca filtrado por coincidencias.
+  const [coincInicial, setCoincInicial] = useState(null) // null | 'con'
+
+  // Entra a la vista Hospitales mostrando solo las coincidencias reporte-hospital.
+  const verCoincidencias = useCallback(() => {
+    setCoincInicial('con')
+    setVista('hospitales')
+  }, [])
   const { refresh } = useMapData()
   const dialogRef = useRef(null)
 
@@ -247,7 +255,7 @@ function AppInner({ setDestacarId }) {
         <VistaBtn activo={vista === 'mapa'} onClick={() => setVista('mapa')} label="Mapa">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" /></svg>
         </VistaBtn>
-        <VistaBtn activo={vista === 'hospitales'} onClick={() => setVista('hospitales')} label="Hospitales">
+        <VistaBtn activo={vista === 'hospitales'} onClick={() => { setVista('hospitales'); setCoincInicial(null) }} label="Hospitales">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z" /></svg>
         </VistaBtn>
       </div>
@@ -257,6 +265,19 @@ function AppInner({ setDestacarId }) {
         <VerListasSubidas className="shrink-0" />
         <SubirListaManuscrita className="min-w-0 flex-1" />
       </div>
+
+      {/* Botón grande de acceso directo a coincidencias reporte-hospital (reunificación). */}
+      {vista === 'directorio' && (
+        <div className="z-[500] flex justify-end border-b border-slate-200 bg-emerald-50 px-3 py-1.5">
+          <button
+            onClick={verCoincidencias}
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white shadow hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5"><path d="M16.5 6.5a4.5 4.5 0 0 0-3.5 1.68A4.5 4.5 0 1 0 7.5 15h.5v-2h-.5a2.5 2.5 0 1 1 2.45-3h2.1A4.5 4.5 0 1 0 16.5 6.5zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM9 11h6v2H9z" /></svg>
+            Posibles reunificaciones
+          </button>
+        </div>
+      )}
 
       {/* Contenido */}
       <main className="relative flex-1 overflow-hidden">
@@ -292,7 +313,7 @@ function AppInner({ setDestacarId }) {
         ) : vista === 'hospitales' ? (
           /* Vista HOSPITALES: botones de hospital + buscador (reunificación) */
           <div className="absolute inset-0">
-            <HospitalesView />
+            <HospitalesView coincInicial={coincInicial} />
           </div>
         ) : (
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
