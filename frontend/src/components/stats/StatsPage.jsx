@@ -56,6 +56,28 @@ function Barras({ dias }) {
   );
 }
 
+// Barras verticales de las 24 horas del día (0-23). Etiqueta cada 3 h.
+function HoraBarras({ horas }) {
+  const max = Math.max(1, ...horas.map((h) => h.value));
+  return (
+    <div className="flex h-32 items-end gap-0.5" role="img" aria-label="Visitas por hora del día">
+      {horas.map((h, i) => (
+        <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+          <div className="flex w-full flex-1 items-end" title={`${h.label}h: ${h.value}`}>
+            <div
+              className="w-full rounded-t bg-violet-400"
+              style={{ height: `${Math.max(2, (h.value / max) * 100)}%` }}
+            />
+          </div>
+          <span className="h-3 w-full whitespace-nowrap text-center text-[9px] leading-3 text-slate-400">
+            {i % 3 === 0 ? h.label : ''}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TopLista({ titulo, filas, transformar }) {
   const max = Math.max(1, ...filas.map((f) => f.value));
   return (
@@ -110,8 +132,33 @@ export default function StatsPage() {
   const total = data?.total ?? 0;
   const hoy = data?.hoy ?? 0;
   const dias = normalizar(data?.por_dia, ['dia', 'fecha', 'label']).slice(-14);
-  const paises = normalizar(data?.por_pais, ['pais', 'country', 'label']).sort((a, b) => b.value - a.value).slice(0, 8);
-  const paths = normalizar(data?.por_path, ['path', 'ruta', 'label']).sort((a, b) => b.value - a.value).slice(0, 8);
+
+  // Por hora: rellena las 24 horas (0-23) para un eje completo aunque falten.
+  const horasRaw = normalizar(data?.por_hora, ['hora', 'h', 'label']);
+  const horaMap = {};
+  horasRaw.forEach((d) => {
+    const k = parseInt(d.label, 10);
+    if (!Number.isNaN(k)) horaMap[k] = d.value;
+  });
+  const horas = Array.from({ length: 24 }, (_, h) => ({ label: String(h).padStart(2, '0'), value: horaMap[h] || 0 }));
+  const hayHoras = horasRaw.length > 0;
+
+  const ordenarTop = (arr) => arr.sort((a, b) => b.value - a.value).slice(0, 8);
+  const paises = ordenarTop(normalizar(data?.por_pais, ['pais', 'country', 'label']));
+  const ciudades = ordenarTop(normalizar(data?.por_ciudad, ['ciudad', 'city', 'label']));
+  const dispositivos = ordenarTop(normalizar(data?.por_dispositivo, ['dispositivo', 'device', 'tipo', 'label']));
+  const operadoras = ordenarTop(normalizar(data?.por_operadora, ['operadora', 'isp', 'org', 'label']));
+  const paths = ordenarTop(normalizar(data?.por_path, ['path', 'ruta', 'label']));
+
+  // Solo se muestran los tops que tienen datos (graceful antes de que el backend los publique).
+  const tops = [
+    { titulo: 'Por país', filas: paises, transformar: pais },
+    { titulo: 'Por ciudad', filas: ciudades },
+    { titulo: 'Dispositivos', filas: dispositivos },
+    { titulo: 'Operadora', filas: operadoras },
+    { titulo: 'Por sección', filas: paths },
+  ].filter((t) => t.filas.length > 0);
+
   const sinDatos = status === 'ready' && total === 0;
 
   return (
@@ -155,11 +202,22 @@ export default function StatsPage() {
             )}
           </div>
 
-          {/* Tops */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TopLista titulo="Por país" filas={paises} transformar={pais} />
-            <TopLista titulo="Por sección" filas={paths} />
-          </div>
+          {/* Por hora del día */}
+          {hayHoras && (
+            <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+              <h2 className="mb-3 text-sm font-bold text-slate-800">Por hora del día</h2>
+              <HoraBarras horas={horas} />
+            </div>
+          )}
+
+          {/* Tops: país, ciudad, dispositivos, operadora, sección (solo con datos) */}
+          {tops.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {tops.map((t) => (
+                <TopLista key={t.titulo} titulo={t.titulo} filas={t.filas} transformar={t.transformar} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </main>

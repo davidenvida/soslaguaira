@@ -252,7 +252,7 @@ function AppInner({ setDestacarId }) {
           className="fixed inset-0 z-[1000] flex items-end outline-none sm:items-center sm:justify-center"
         >
           <div className="sos-overlay-enter absolute inset-0 bg-black/40" onClick={cerrar} />
-          <div className="sos-panel-enter pb-safe relative max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl bg-white sm:max-h-[85vh] sm:rounded-2xl sm:w-[calc(100%-2rem)] sm:max-w-lg">
+          <div className="sos-panel-enter pb-safe relative max-h-[85dvh] w-full overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white sm:max-h-[85vh] sm:rounded-2xl sm:w-[calc(100%-2rem)] sm:max-w-lg">
             <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 text-white ${PANELS[panel].color}`}>
               <h2 id="sos-panel-titulo" className="text-sm font-semibold">{PANELS[panel].titulo}</h2>
               <button

@@ -25,7 +25,7 @@ export default function AtrapadoForm({ onSuccess }) {
   const [coordError, setCoordError] = useState(false)
 
   return (
-    <div className="mx-auto w-full max-w-md">
+    <div className="mx-auto w-full max-w-md px-3 sm:px-4">
       <div className="mb-4 rounded-lg border-l-4 border-red-600 bg-red-50 p-3">
         <h2 className="text-xl font-bold text-red-700">🚨 Reportar personas ATRAPADAS</h2>
         <p className="text-sm text-red-600">

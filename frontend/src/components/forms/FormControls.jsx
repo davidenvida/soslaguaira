@@ -7,7 +7,7 @@ const baseInput =
 
 function Wrapper({ label, name, required, children, hint }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       {label && (
         <label htmlFor={name} className="text-sm font-medium text-gray-700">
           {label} {required && <span className="text-red-600">*</span>}

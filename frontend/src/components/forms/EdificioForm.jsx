@@ -33,7 +33,7 @@ export default function EdificioForm({ onSuccess }) {
   const [coordError, setCoordError] = useState(false)
 
   return (
-    <div className="mx-auto w-full max-w-md">
+    <div className="mx-auto w-full max-w-md px-3 sm:px-4">
       <header className="mb-4">
         <h2 className="text-xl font-bold text-gray-900">🏚️ Reportar estado de un edificio</h2>
         <p className="text-sm text-gray-500">
