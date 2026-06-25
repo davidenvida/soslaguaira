@@ -63,16 +63,19 @@ router.get('/personas', async (req, res, next) => {
       };
     };
 
-    const filtroCoinc = req.query.coincidencia; // con | sin | todos(default)
+    // Acepta con|sin|todos y tambien true|false|si|no|1|0 (tolerante a lo que mande el front).
+    const fc = String(req.query.coincidencia || '').toLowerCase();
+    const filtroCon = ['con', 'true', 'si', '1'].includes(fc);
+    const filtroSin = ['sin', 'false', 'no', '0'].includes(fc);
     const SELECT_ROW = `SELECT e.nombre, e.cedula, e.estado, e.lugar, l.fuente AS hospital
                         FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id WHERE ${where}`;
 
     let items;
     let total;
-    if (filtroCoinc === 'con' || filtroCoinc === 'sin') {
+    if (filtroCon || filtroSin) {
       // Computar coincidencia ANTES de paginar (filtra el set completo, luego pagina en memoria).
       const all = (await query(`${SELECT_ROW} ORDER BY l.fuente, e.id`, params)).rows.map(conCoincidencia);
-      const filtered = all.filter((it) => (filtroCoinc === 'con' ? it.coincidencia.hay : !it.coincidencia.hay));
+      const filtered = all.filter((it) => (filtroCon ? it.coincidencia.hay : !it.coincidencia.hay));
       total = filtered.length;
       items = filtered.slice(offset, offset + limit);
     } else {
