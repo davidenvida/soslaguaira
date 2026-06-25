@@ -417,7 +417,11 @@ router.patch('/personas/:id', async (req, res, next) => {
       sets.push('confirmado_at = now()');
     }
     if (b.confirmado_contacto !== undefined) addSet('confirmado_contacto', cleanStr(b.confirmado_contacto, 200));
-    // Tracking de aviso a la familia (reunificacion).
+    // Tracking de aviso a la familia (reunificacion): ADMIN-ONLY (accion del equipo, no publica).
+    if (b.informado_familia !== undefined || b.informado_via !== undefined) {
+      const esAdmin = process.env.ADMIN_TOKEN && req.get('x-admin-token') === process.env.ADMIN_TOKEN;
+      if (!esAdmin) return fail(res, "Marcar 'informado a la familia' requiere admin (X-Admin-Token).", 401);
+    }
     if (b.informado_via !== undefined) {
       if (b.informado_via !== null && !oneOf(b.informado_via, INFORMADO_VIAS)) {
         return fail(res, `'informado_via' invalido (${INFORMADO_VIAS.join('|')}).`);
