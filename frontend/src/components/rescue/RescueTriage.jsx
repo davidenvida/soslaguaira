@@ -65,9 +65,11 @@ export default function RescueTriage({
     ? items
     : items.filter((i) => i.estado === 'atrapado' || i.estado === 'en_rescate');
 
+  // Cuenta personas por rescatar. Los casos de intel suelen tener cantidad_personas NULL:
+  // se cuenta al menos 1 por caso para NO mostrar 0 cuando hay atrapados activos.
   const totalPersonas = visibles
     .filter((i) => i.estado === 'atrapado' || i.estado === 'en_rescate')
-    .reduce((acc, i) => acc + (i.cantidad_personas || 0), 0);
+    .reduce((acc, i) => acc + (i.cantidad_personas || 1), 0);
 
   return (
     <section className="w-full max-w-2xl mx-auto p-3 sm:p-4" aria-label="Triaje de rescate">
