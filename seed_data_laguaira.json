@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "descripcion": "Datos semilla realistas del estado La Guaira (Vargas), Venezuela, para SOSVEN. Adaptado al MODELO DE DATOS del contrato (campos y enums exactos confirmados por Enzo). Coordenadas reales aproximadas por zona. Centro del mapa: lat 10.6010, lng -66.9340.",
+    "descripcion": "Datos semilla realistas del estado La Guaira (Vargas), Venezuela, para SOS La Guaira. Adaptado al MODELO DE DATOS del contrato (campos y enums exactos confirmados por Enzo). Coordenadas reales aproximadas por zona. Centro del mapa: lat 10.6010, lng -66.9340.",
     "autor": "Fiona",
     "generado": "2026-06-25",
     "version_contrato": "2 (adaptado a enums del backend)",

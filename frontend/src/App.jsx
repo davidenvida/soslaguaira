@@ -25,6 +25,7 @@ const PANELS = {
   atrapado: { titulo: '🆘 Reportar persona ATRAPADA — rescate urgente', color: 'bg-red-600' },
   edificio: { titulo: 'Reportar estado de un edificio', color: 'bg-violet-600' },
   rescate: { titulo: 'Panel de rescate (triaje)', color: 'bg-red-700' },
+  desaparecidos: { titulo: 'Personas desaparecidas', color: 'bg-rose-700' },
 }
 
 export default function App() {
@@ -128,12 +129,20 @@ function AppInner() {
               Reunificación y rescate · Vargas, Venezuela
             </p>
           </div>
-          <button
-            onClick={() => setPanel('rescate')}
-            className="min-h-[40px] rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-          >
-            Rescatistas
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPanel('desaparecidos')}
+              className="min-h-[40px] rounded bg-white px-3 py-1 text-xs font-bold text-rose-700 hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            >
+              Desaparecidos
+            </button>
+            <button
+              onClick={() => setPanel('rescate')}
+              className="min-h-[40px] rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            >
+              Rescatistas
+            </button>
+          </div>
         </div>
       </header>
 
@@ -175,7 +184,7 @@ function AppInner() {
           className="absolute inset-0 z-[1000] flex items-end outline-none sm:items-center sm:justify-center"
         >
           <div className="sos-overlay-enter absolute inset-0 bg-black/40" onClick={cerrar} />
-          <div className="sos-panel-enter pb-safe relative max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl bg-white sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl">
+          <div className={`sos-panel-enter pb-safe relative max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl bg-white sm:max-h-[85vh] sm:rounded-2xl ${panel === 'desaparecidos' ? 'sm:max-w-3xl' : 'sm:max-w-lg'}`}>
             <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 text-white ${PANELS[panel].color}`}>
               <h2 id="sos-panel-titulo" className="text-sm font-semibold">{PANELS[panel].titulo}</h2>
               <button

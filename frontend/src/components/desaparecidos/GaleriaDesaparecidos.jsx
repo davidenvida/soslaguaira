@@ -54,6 +54,7 @@ export default function GaleriaDesaparecidos() {
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [source, setSource] = useState('api'); // api | mock
   const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(null); // total de reportes (meta del backend)
   const reqId = useRef(0);
 
   const filtros = useMemo(
@@ -76,6 +77,7 @@ export default function GaleriaDesaparecidos() {
       if (cancelado || id !== reqId.current) return;
       const filtrados = mockDesaparecidos.filter(noDuplicado).filter((p) => matchLocal(p, filtros));
       setItems(filtrados);
+      setTotal(filtrados.length);
       setHasMore(false);
       setSource('mock');
       setStatus('ready');
@@ -97,6 +99,7 @@ export default function GaleriaDesaparecidos() {
         setHasMore(
           typeof res?.pages === 'number' ? page < res.pages : raw.length === LIMIT,
         );
+        if (typeof res?.total === 'number') setTotal(res.total);
         setSource('api');
         setStatus('ready');
       } catch {
@@ -124,7 +127,14 @@ export default function GaleriaDesaparecidos() {
   return (
     <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-5xl p-3 sm:p-4">
       <header className="mb-3">
-        <h2 className="text-lg font-bold text-slate-900">Desaparecidos</h2>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-lg font-bold text-slate-900">Desaparecidos</h2>
+          {total != null && (
+            <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-600">
+              {total} {total === 1 ? 'reporte' : 'reportes'}
+            </span>
+          )}
+        </div>
         <p className="text-xs text-slate-500">
           Reportes recopilados de redes y fuentes públicas. {source === 'mock' && '(datos de prueba)'}
         </p>

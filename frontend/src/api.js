@@ -3,10 +3,21 @@ import axios from 'axios'
 // Cliente centralizado. Todos los componentes del frontend hablan con el backend por aquí.
 // Contrato de respuesta del backend: { success, data, message }.
 // El proxy de Vite redirige /api y /uploads al backend (puerto 3000).
+// En dev VITE_API_URL queda vacío -> baseURL '/api' usa el proxy de Vite.
+// En producción se setea al dominio del backend (Railway).
 const http = axios.create({
-  baseURL: '/api',
+  baseURL: (import.meta.env.VITE_API_URL || '') + '/api',
   timeout: 15000,
 })
+
+// Resuelve la URL de una foto para que se vea en dev y en producción:
+// absoluta (http/https) -> tal cual; relativa (/uploads/...) -> antepone
+// VITE_API_URL (vacío en dev, dominio del backend en prod).
+export function fotoUrl(p) {
+  if (!p) return p
+  if (/^https?:\/\//i.test(p)) return p
+  return (import.meta.env.VITE_API_URL || '') + p
+}
 
 // Devuelve directamente `data` del sobre { success, data, message }.
 function unwrap(res) {
