@@ -102,4 +102,8 @@ export const registrarVisita = (payload = {}) =>
 // Resumen de visitas para ver el conteo: { total, hoy, por_dia, por_pais, por_path }.
 export const visitasResumen = () => http.get('/visitas/resumen').then(unwrap)
 
+// Buzón de sugerencias: el usuario envía texto + contacto opcional.
+export const enviarSugerencia = (payload) =>
+  http.post('/sugerencias', payload).then(unwrap)
+
 export default http

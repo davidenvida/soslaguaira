@@ -7,6 +7,7 @@ import MatchView from './components/search/MatchView'
 import RescueTriage from './components/rescue/RescueTriage'
 import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecidos'
 import ContadorVisitas from './components/ui/ContadorVisitas'
+import BuzonSugerencias from './components/ui/BuzonSugerencias'
 import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelPersona, registrarVisita } from './api'
 
 // ============================================================================
@@ -196,9 +197,19 @@ function AppInner() {
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
           <div className="absolute inset-0 overflow-y-auto">
             <GaleriaDesaparecidos />
+            <BuzonSugerencias className="mx-auto mt-2 w-full max-w-xl px-4 pb-4" />
             <div className="px-4 pb-2 text-center">
               <ContadorVisitas />
             </div>
+            <footer className="px-4 pb-6 text-center text-[11px] leading-relaxed text-slate-400">
+              <p>
+                Desarrollado por <span className="font-semibold text-slate-500">David Rosales</span>
+              </p>
+              <p className="mt-1">
+                Los datos provienen de fuentes y publicaciones de dominio público y se utilizan
+                exclusivamente para labores de rescate y reunificación familiar.
+              </p>
+            </footer>
             {/* Espacio para que la última fila / "cargar más" no queden bajo el
                 botón flotante de Reportar ni el home indicator. */}
             <div aria-hidden="true" className="pb-safe h-24" />
