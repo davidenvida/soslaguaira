@@ -8,6 +8,7 @@ import { ok, fail } from '../utils/response.js';
 import { writeLimiter } from '../middleware/rateLimit.js';
 import { cleanStr, isNonEmptyString, normalizarCedula, toIntOrNull } from '../utils/validate.js';
 import { compareNombres } from '../utils/match.js';
+import { SQL_TIPO_PUBLICO } from '../utils/listasTipo.js';
 
 const router = Router();
 const UPLOAD_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'uploads');
@@ -319,9 +320,6 @@ router.get('/', adminGate, async (req, res, next) => {
     next(err);
   }
 });
-
-// Tipos PUBLICABLES (no sensibles): ingresados/trasladados/heridos. Fallecidos/morgue JAMAS publico.
-const SQL_TIPO_PUBLICO = `(tipo ~* 'ingres|admit|hospital|atend|triage|trasl|refer|remit|herid|lesion|quemad') AND (tipo !~* 'fallec|muert|morgue|obito|deces')`;
 
 // GET /api/listas/publicas  -> PUBLICO (sin token): solo listas no sensibles, sin cedulas.
 router.get('/publicas', async (req, res, next) => {
