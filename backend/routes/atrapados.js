@@ -87,9 +87,11 @@ router.get('/', async (req, res, next) => {
     let nativeWhere = '';
     if (estado) { nativeParams.push(estado); nativeWhere = `WHERE estado = $1`; }
     const nativos = (await query(`SELECT * FROM atrapados ${nativeWhere}`, nativeParams)).rows
-      .map((r) => ({ ...r, origen: 'app' }));
+      .map((r) => ({ ...r, origen: 'app', geo_pendiente: r.lat == null || r.lng == null }));
 
-    // 2) Intel con estado='atrapado' + ubicacion (a menos que el filtro pida otro estado).
+    // 2) Intel con estado='atrapado' (a menos que el filtro pida otro estado).
+    // Un atrapado NO se esconde: los que no geocodifican van igual con geo_pendiente=true
+    // (la card los muestra sin navegacion pero con su ubicacion textual, para localizarlos).
     let intelCards = [];
     if (!estado || estado === 'atrapado') {
       const intel = (await query(
@@ -102,19 +104,21 @@ router.get('/', async (req, res, next) => {
       const geocode = buildGeocoder(gaz);
       intelCards = intel
         .map((r) => (r.lat != null && r.lng != null) ? r : { ...r, ...geocode(r) })
-        .filter((r) => r.lat != null && r.lng != null) // solo los ubicables van al mapa de rescate
-        .map(intelAtrapadoToCard);
+        .map((r) => ({ ...intelAtrapadoToCard(r), geo_pendiente: r.lat == null || r.lng == null }));
     }
 
-    // 3) Merge + orden de urgencia (atrapado primero, luego mas reciente).
+    // 3) Merge + orden: geolocalizados primero (tienen navegacion), luego urgencia, luego recientes.
     const merged = [...nativos, ...intelCards].sort((a, b) => {
+      const ga = a.geo_pendiente ? 1 : 0;
+      const gb = b.geo_pendiente ? 1 : 0;
+      if (ga !== gb) return ga - gb;
       const ua = a.estado === 'atrapado' ? 0 : 1;
       const ub = b.estado === 'atrapado' ? 0 : 1;
       if (ua !== ub) return ua - ub;
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
-    return ok(res, merged, 'Listado de atrapados (priorizado, app + intel).');
+    return ok(res, merged, 'Listado de atrapados (priorizado, app + intel; geolocalizados primero).');
   } catch (err) {
     next(err);
   }
