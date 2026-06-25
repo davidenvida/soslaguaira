@@ -105,9 +105,12 @@ export const nombresCoinciden = (a, b) => {
   for (const x of ta) if (tb.some((y) => sim(x, y) >= 0.85)) shared++;
   if (shared < 2) return false;
 
+  // Match de APELLIDO estricto: exige misma inicial + alta similitud. Asi 'Fernandez' != 'Hernandez'
+  // (difieren en la inicial F/H) se RECHAZA, pero 'Gonzalez'/'Gonzales' (misma inicial, variante) pasa.
   const lastA = ta[ta.length - 1];
   const lastB = tb[tb.length - 1];
-  const apellidoOverlap = tb.some((y) => sim(lastA, y) >= 0.85) || ta.some((x) => sim(lastB, x) >= 0.85);
+  const apMatch = (x, y) => x[0] === y[0] && sim(x, y) >= 0.85;
+  const apellidoOverlap = tb.some((y) => apMatch(lastA, y)) || ta.some((x) => apMatch(lastB, x));
   return apellidoOverlap;
 };
 
