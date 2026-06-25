@@ -12,6 +12,21 @@
   transform-origin: 50% 100%;
 }
 
+/* Cluster: circulo con el numero de reportes en ese punto. */
+.sos-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  font-family: system-ui, sans-serif;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
 /* Atrapados con estado 'atrapado' = rescate urgente: pin mas grande y pulso. */
 .sos-pin--urgente {
   animation: sos-pulse 1.4s ease-in-out infinite;

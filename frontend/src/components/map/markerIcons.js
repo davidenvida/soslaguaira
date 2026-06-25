@@ -37,3 +37,15 @@ export const edificioIcon = (color) => buildIcon(color, 'E', { size: 38 });
 export const DESAPARECIDO_COLOR = '#ec4899';
 export const desaparecidoIcon = (destacado = false) =>
   buildIcon(DESAPARECIDO_COLOR, 'D', { size: destacado ? 46 : 34, urgente: destacado });
+
+// Cluster: un círculo con el número de reportes en ese punto. El tamaño crece
+// un poco con la cantidad para que los grupos grandes se noten.
+export const clusterIcon = (count, color = DESAPARECIDO_COLOR) => {
+  const size = count >= 25 ? 48 : count >= 10 ? 44 : 38;
+  return L.divIcon({
+    html: `<div class="sos-cluster" style="background:${color};width:${size}px;height:${size}px">${count}</div>`,
+    className: 'sos-divicon',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+};

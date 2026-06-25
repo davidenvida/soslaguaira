@@ -1,17 +1,20 @@
 // Capa de DESAPARECIDOS (intel geocodificado). Marcador rosa, distinto de las
 // otras capas. Popup con foto, nombre, estado (badge) y enlace a la fuente.
 //
-// Anti-colisión: muchos intel caen en el mismo punto del gazetteer (centroide de
-// parroquia como fallback). Para que no se tapen, los que comparten exactamente
-// las mismas coordenadas se reparten en un pequeño círculo (determinista por
-// índice). Los puntos únicos se dejan exactos.
+// CLUSTERING: muchos intel caen en el mismo punto (centroide de parroquia o
+// mismo edificio). En vez de amontonar marcadores, se agrupan por proximidad:
+// 1 reporte -> marcador normal; varios -> UN marcador-cluster con el número, que
+// al hacer clic abre un modal con la lista (todos clickeables).
 //
-// `destacarId`: al navegar "Ver en el mapa" desde el directorio, el marcador de
-// esa persona se agranda con pulso y abre su popup automáticamente.
-import { useEffect, useRef } from 'react';
+// `destacarId`: al navegar "Ver en el mapa" desde el directorio, si la persona
+// es un marcador suelto se agranda y abre su popup; si cae en un cluster, se
+// abre el modal de ese cluster.
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LayerGroup, Marker, Popup } from 'react-leaflet';
 import { personaEstado } from './mapColors';
-import { desaparecidoIcon } from './markerIcons';
+import { desaparecidoIcon, clusterIcon, DESAPARECIDO_COLOR } from './markerIcons';
+import { agruparPorProximidad } from './clustering';
+import ClusterModal from './ClusterModal';
 import PopupFoto from './PopupFoto';
 import FuenteIcono from '../ui/FuenteIcono';
 import { resolveFoto, hasLatLng } from './fields';
@@ -20,41 +23,22 @@ const nombre = (d) => d.nombre_completo || d.nombreCompleto || d.nombre || 'Sin 
 const ubicacion = (d) => d.ultima_ubicacion || d.ultimaUbicacion || d.parroquia || '';
 const fuente = (d) => d.fuente_url || d.fuenteUrl || '';
 
-// Radio del reparto en grados (~11 m por cada 0.0001). Pequeño pero visible.
-const SPREAD = 0.00018;
-
-// Reparte en círculo los registros que comparten coordenada exacta.
-function despuntar(lista) {
-  const grupos = new Map();
-  for (const d of lista) {
-    const k = `${d.lat.toFixed(5)},${d.lng.toFixed(5)}`;
-    if (!grupos.has(k)) grupos.set(k, []);
-    grupos.get(k).push(d);
-  }
-  const out = [];
-  for (const grupo of grupos.values()) {
-    if (grupo.length === 1) {
-      out.push({ d: grupo[0], lat: grupo[0].lat, lng: grupo[0].lng });
-      continue;
-    }
-    const n = grupo.length;
-    grupo.forEach((d, i) => {
-      const ang = (2 * Math.PI * i) / n;
-      // corrige la longitud por la latitud para que el círculo no se deforme
-      const cosLat = Math.cos((d.lat * Math.PI) / 180) || 1;
-      out.push({
-        d,
-        lat: d.lat + SPREAD * Math.sin(ang),
-        lng: d.lng + (SPREAD * Math.cos(ang)) / cosLat,
-      });
-    });
-  }
-  return out;
-}
+// Normaliza un reporte al formato que consume ClusterModal.
+const toItem = (d) => {
+  const est = personaEstado(d.estado);
+  return {
+    id: d.id,
+    fotoSrc: resolveFoto(d),
+    titulo: nombre(d),
+    subtitulo: ubicacion(d),
+    badgeLabel: est.label,
+    badgeColor: est.color,
+    fuenteUrl: fuente(d),
+  };
+};
 
 function MarcadorDesaparecido({ d, lat, lng, destacado }) {
   const ref = useRef(null);
-  // Al volverse el target, abre su popup (Leaflet hace auto-pan para mostrarlo).
   useEffect(() => {
     if (destacado && ref.current) ref.current.openPopup();
   }, [destacado]);
@@ -112,23 +96,52 @@ function MarcadorDesaparecido({ d, lat, lng, destacado }) {
 }
 
 export default function DesaparecidosLayer({ desaparecidos = [], estadoFiltro = 'todos', destacarId = null }) {
-  const visibles = desaparecidos
-    .filter(hasLatLng)
-    .filter((d) => estadoFiltro === 'todos' || d.estado === estadoFiltro);
+  const [modal, setModal] = useState(null); // { titulo, items } | null
 
-  const ubicados = despuntar(visibles);
+  const grupos = useMemo(() => {
+    const visibles = desaparecidos
+      .filter(hasLatLng)
+      .filter((d) => estadoFiltro === 'todos' || d.estado === estadoFiltro);
+    return agruparPorProximidad(visibles, (d) => d.lat, (d) => d.lng, 4);
+  }, [desaparecidos, estadoFiltro]);
+
+  const abrirModal = (g) =>
+    setModal({ titulo: `${g.items.length} reportes en este lugar`, items: g.items.map(toItem) });
+
+  // Si el target navegado cae dentro de un cluster, abre ese modal.
+  useEffect(() => {
+    if (destacarId == null) return;
+    const g = grupos.find(
+      (grp) => grp.items.length > 1 && grp.items.some((d) => String(d.id) === String(destacarId)),
+    );
+    if (g) abrirModal(g);
+  }, [destacarId, grupos]);
 
   return (
-    <LayerGroup>
-      {ubicados.map(({ d, lat, lng }) => (
-        <MarcadorDesaparecido
-          key={d.id}
-          d={d}
-          lat={lat}
-          lng={lng}
-          destacado={destacarId != null && String(d.id) === String(destacarId)}
-        />
-      ))}
-    </LayerGroup>
+    <>
+      <LayerGroup>
+        {grupos.map((g) =>
+          g.items.length === 1 ? (
+            <MarcadorDesaparecido
+              key={g.items[0].id}
+              d={g.items[0]}
+              lat={g.lat}
+              lng={g.lng}
+              destacado={destacarId != null && String(g.items[0].id) === String(destacarId)}
+            />
+          ) : (
+            <Marker
+              key={g.key}
+              position={[g.lat, g.lng]}
+              icon={clusterIcon(g.items.length, DESAPARECIDO_COLOR)}
+              eventHandlers={{ click: () => abrirModal(g) }}
+            />
+          ),
+        )}
+      </LayerGroup>
+      {modal && (
+        <ClusterModal titulo={modal.titulo} items={modal.items} onClose={() => setModal(null)} />
+      )}
+    </>
   );
 }
