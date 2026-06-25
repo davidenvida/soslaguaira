@@ -101,20 +101,20 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
     // Una sola fila horizontal de chips compactos; en móvil scrollea en X si no
     // entran (nunca dos filas) para que los reportes queden en la primera pantalla.
     <ul
-      className="-mx-3 mb-3 flex flex-nowrap gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4"
+      className="-mx-3 mb-3 flex flex-nowrap gap-2 overflow-x-auto px-3 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4"
       aria-label="Estadísticas del directorio"
     >
       {cards.map(({ key, label, color, filtro }) => {
         const clickable = canFilter && filtro !== undefined;
         const activo = clickable && filtro === estado;
-        const cls = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 ring-1 ${COLORS[color]} ${
+        const cls = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 ring-1 ${COLORS[color]} ${
           activo ? `${ACTIVE[color] || 'ring-2'} ring-offset-1 ring-offset-slate-50` : ''
         } ${clickable ? 'cursor-pointer transition hover:brightness-95' : ''}`;
 
         const contenido = (
           <>
-            <span className="text-sm font-extrabold tabular-nums leading-none">{fmt(vista[key])}</span>
-            <span className="text-[11px] font-medium opacity-80">{label}</span>
+            <span className="text-base font-extrabold tabular-nums leading-none">{fmt(vista[key])}</span>
+            <span className="text-xs font-medium opacity-80">{label}</span>
           </>
         );
 
