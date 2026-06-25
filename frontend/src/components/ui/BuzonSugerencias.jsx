@@ -41,7 +41,7 @@ export default function BuzonSugerencias({ className = '' }) {
 
       {exito ? (
         <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700" role="status">
-          Gracias, recibimos tu sugerencia.
+          Gracias por tu sugerencia.
         </p>
       ) : (
         <form onSubmit={onSubmit} className="mt-2 space-y-2">
