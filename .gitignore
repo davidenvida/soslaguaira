@@ -22,6 +22,9 @@ frontend/nul.css
 backend/uploads/*
 !backend/uploads/.gitkeep
 
+# ── Exports de DATA REAL (PII de personas: NO va a repo público) ─
+backend/exports/
+
 # ── Internos VOZCLAUD / coordinación (no van al repo público) ─
 CLAUDE.md
 **/CLAUDE.md
