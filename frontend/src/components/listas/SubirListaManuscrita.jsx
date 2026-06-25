@@ -93,6 +93,10 @@ export default function SubirListaManuscrita({ className = '' }) {
   const [foto, setFoto] = useState(null);
   const [tipo, setTipo] = useState('ingresados');
   const [fuente, setFuente] = useState(''); // hospital / fuente de la lista (obligatorio)
+  const [fuenteUrl, setFuenteUrl] = useState(''); // enlace a la publicación de origen (opcional)
+  const [subNombre, setSubNombre] = useState('');
+  const [subApellido, setSubApellido] = useState('');
+  const [subTelefono, setSubTelefono] = useState('');
   const [fase, setFase] = useState('form'); // form | enviando | resultado | error
   const [filas, setFilas] = useState([]);
   const [tipoLista, setTipoLista] = useState('');
@@ -125,9 +129,15 @@ export default function SubirListaManuscrita({ className = '' }) {
     setFase('form');
     setFoto(null);
     setFuente('');
+    setFuenteUrl('');
+    setSubNombre('');
+    setSubApellido('');
+    setSubTelefono('');
     setFilas([]);
     setTipoLista('');
   };
+
+  const datosCompletos = foto && fuente.trim() && subNombre.trim() && subApellido.trim() && subTelefono.trim();
 
   const enviar = async (e) => {
     e.preventDefault();
