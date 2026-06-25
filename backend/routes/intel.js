@@ -5,6 +5,7 @@ import { intelLimiter } from '../middleware/rateLimit.js';
 import {
   isNonEmptyString, oneOf, cleanStr, toIntOrNull, toNumberOrNull, normalizeName,
 } from '../utils/validate.js';
+import { buildGeocoder } from '../utils/geocode.js';
 
 const router = Router();
 
@@ -189,15 +190,21 @@ router.get('/personas', async (req, res, next) => {
     else offset = 0;
 
     const pageParams = [...params, limit, offset];
+    // Orden: primero los que TIENEN foto (para que la galeria/mapa no parezcan sin fotos), luego recientes.
     const { rows } = await query(
       `SELECT * FROM personas_intel ${where}
-       ORDER BY fecha_reporte DESC, id DESC
+       ORDER BY (foto_url IS NOT NULL) DESC, created_at DESC, id DESC
        LIMIT $${pageParams.length - 1} OFFSET $${pageParams.length}`,
       pageParams
     );
 
+    // Geocodifica cada fila contra el gazetteer de residencias (edificio -> centroide parroquia).
+    const gaz = (await query('SELECT nombre, parroquia, lat, lon FROM residencias')).rows;
+    const geocode = buildGeocoder(gaz);
+    const items = rows.map((r) => ({ ...r, ...geocode(r) }));
+
     const data = {
-      items: rows,
+      items,
       total,
       limit,
       offset,

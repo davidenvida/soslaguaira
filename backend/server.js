@@ -56,7 +56,7 @@ app.get('/api/health', (req, res) => ok(res, { status: 'up' }, 'Backend SOS La G
 app.use('/api/personas', personasRouter);
 app.use('/api/atrapados', atrapadosRouter);
 app.use('/api/edificios', edificiosRouter);
-app.use('/api/upload', uploadRouter);
+app.use('/api/upload', uploadRouter); // incluye POST /api/upload/import (temporal, token-gated)
 app.use('/api/intel', intelRouter);
 app.use('/api', confirmacionesRouter); // POST /api/:tipo/:id/confirmar
 

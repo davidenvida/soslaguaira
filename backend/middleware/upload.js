@@ -37,3 +37,17 @@ export const upload = multer({
   fileFilter,
   limits: { fileSize: MAX_MB * 1024 * 1024, files: 1 },
 });
+
+// Storage de IMPORT: conserva el nombre ORIGINAL (para que foto_url matchee en prod).
+// path.basename evita path traversal (../). Sobreescribe si ya existe (idempotente).
+const importStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => cb(null, path.basename(file.originalname)),
+});
+
+export const uploadImport = multer({
+  storage: importStorage,
+  fileFilter,
+  limits: { fileSize: MAX_MB * 1024 * 1024, files: 1 },
+});
+

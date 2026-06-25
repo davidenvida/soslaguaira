@@ -3,7 +3,7 @@ import { query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { writeLimiter } from '../middleware/rateLimit.js';
 import {
-  isNonEmptyString, oneOf, cleanStr, toIntOrNull, validCoords,
+  isNonEmptyString, oneOf, cleanStr, toIntOrNull, toNumberOrNull, validCoords,
 } from '../utils/validate.js';
 
 const router = Router();
@@ -68,4 +68,62 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// PATCH /api/edificios/:id  -> enriquece campos presentes (merge sin recrear la fila).
+router.patch('/:id', writeLimiter, async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+
+    const exists = (await query('SELECT id FROM edificios WHERE id = $1', [id])).rows[0];
+    if (!exists) return fail(res, 'Edificio no encontrado.', 404);
+
+    const b = req.body || {};
+    const sets = [];
+    const params = [];
+    const addSet = (col, val) => {
+      params.push(val);
+      sets.push(`${col} = $${params.length}`);
+    };
+
+    if (b.nombre !== undefined) {
+      if (!isNonEmptyString(b.nombre)) return fail(res, "Campo 'nombre' no puede quedar vacio.");
+      addSet('nombre', cleanStr(b.nombre, 200));
+    }
+    if (b.descripcion !== undefined) addSet('descripcion', cleanStr(b.descripcion, 1000));
+    if (b.direccion !== undefined) addSet('direccion', cleanStr(b.direccion, 300));
+    if (b.foto_url !== undefined) addSet('foto_url', cleanStr(b.foto_url, 500));
+    if (b.estado !== undefined) {
+      if (!oneOf(b.estado, ESTADOS)) return fail(res, "Campo 'estado' invalido.");
+      addSet('estado', b.estado);
+    }
+    if (b.atrapados_estimados !== undefined) {
+      const n = toIntOrNull(b.atrapados_estimados);
+      if (n === null || n < 0) return fail(res, "Campo 'atrapados_estimados' invalido.");
+      addSet('atrapados_estimados', n);
+    }
+    if (b.lat !== undefined) {
+      const la = toNumberOrNull(b.lat);
+      if (la === null || la < -90 || la > 90) return fail(res, "Campo 'lat' invalido.");
+      addSet('lat', la);
+    }
+    if (b.lng !== undefined) {
+      const ln = toNumberOrNull(b.lng);
+      if (ln === null || ln < -180 || ln > 180) return fail(res, "Campo 'lng' invalido.");
+      addSet('lng', ln);
+    }
+
+    if (!sets.length) return fail(res, 'No hay campos para actualizar.');
+
+    params.push(id);
+    const { rows } = await query(
+      `UPDATE edificios SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
+      params
+    );
+    return ok(res, rows[0], 'Edificio actualizado.');
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
+
