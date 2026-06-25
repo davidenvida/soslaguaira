@@ -5,6 +5,7 @@ import { useState } from 'react';
 import http, { fotoUrl as toBackendUrl } from '../../api';
 import * as api from '../../api';
 import Lightbox from '../ui/Lightbox';
+import FuenteIcono from '../ui/FuenteIcono';
 import { estadoLabel, estadoColor } from './estados';
 
 // Pasa la foto por el helper de api.js: /uploads/... -> dominio backend en prod
@@ -160,9 +161,10 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-semibold text-red-600 hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
             >
-              Ver publicación <span aria-hidden="true">→</span>
+              <FuenteIcono url={url} />
+              Ver publicación
               <span className="sr-only"> (abre en nueva pestaña)</span>
             </a>
           )}
@@ -174,7 +176,7 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
             type="button"
             onClick={marcarASalvo}
             disabled={marcando}
-            className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="mt-2 min-h-[44px] w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
           >
             {marcando ? 'Marcando…' : 'Marcar encontrado / a salvo'}
           </button>

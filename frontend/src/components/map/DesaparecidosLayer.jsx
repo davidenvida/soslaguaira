@@ -9,6 +9,7 @@ import { LayerGroup, Marker, Popup } from 'react-leaflet';
 import { personaEstado } from './mapColors';
 import { desaparecidoIcon } from './markerIcons';
 import PopupFoto from './PopupFoto';
+import FuenteIcono from '../ui/FuenteIcono';
 import { resolveFoto, hasLatLng } from './fields';
 
 const nombre = (d) => d.nombre_completo || d.nombreCompleto || d.nombre || 'Sin nombre';
@@ -85,8 +86,14 @@ export default function DesaparecidosLayer({ desaparecidos = [], estadoFiltro = 
                   )}
                   {url && (
                     <div className="sos-popup__row" style={{ marginTop: 8 }}>
-                      <a href={url} target="_blank" rel="noopener noreferrer">
-                        Ver publicación →
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <FuenteIcono url={url} />
+                        Ver publicación
                       </a>
                     </div>
                   )}
