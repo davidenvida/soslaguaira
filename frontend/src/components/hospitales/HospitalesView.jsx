@@ -3,7 +3,7 @@
 // Hospital y Coincidencia (verde = coincide con un reporte del directorio, gris =
 // sin coincidencia). Botones de hospital arriba (Todos + cada uno) que filtran la
 // lista; el buscador filtra DENTRO de la lista por nombre o cédula. Pública.
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import http, { fotoUrl as toBackendUrl } from '../../api';
 import PersonaDetalle from '../desaparecidos/PersonaDetalle';
 import Lightbox from '../ui/Lightbox';
@@ -42,6 +42,15 @@ export default function HospitalesView({ coincInicial }) {
   const [detalle, setDetalle] = useState(null); // reporte abierto (PersonaDetalle)
   const [cargandoReporte, setCargandoReporte] = useState(false);
   const [imgLista, setImgLista] = useState(null); // imagen del cartel de la lista (Lightbox)
+  const [expandido, setExpandido] = useState(() => new Set()); // filas expandidas en móvil
+
+  const toggleExp = (k) =>
+    setExpandido((s) => {
+      const n = new Set(s);
+      if (n.has(k)) n.delete(k);
+      else n.add(k);
+      return n;
+    });
 
   useEffect(() => {
     let vivo = true;
@@ -152,15 +161,70 @@ export default function HospitalesView({ coincInicial }) {
         </p>
       )}
 
-      {/* Lista / tabla scrollable */}
-      <div className="min-h-0 flex-1 overflow-auto rounded-xl ring-1 ring-slate-200" aria-live="polite">
+      {/* Lista de pacientes: cards en móvil, tabla completa en desktop. */}
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl ring-1 ring-slate-200" aria-live="polite">
         {status === 'loading' && <p className="py-8 text-center text-sm text-slate-500">Cargando…</p>}
         {status === 'error' && <p className="py-8 text-center text-sm text-red-600">No se pudo cargar la lista.</p>}
         {status === 'ready' && filtradas.length === 0 && (
           <p className="py-8 text-center text-sm text-slate-500">No hay personas que coincidan.</p>
         )}
+
+        {/* MÓVIL: cada paciente como card (prioridad: nombre, cédula, coincidencia). */}
         {status === 'ready' && filtradas.length > 0 && (
-          <table className="w-full text-left text-xs sm:text-sm">
+          <ul className="divide-y divide-slate-100 sm:hidden">
+            {filtradas.map((p, i) => {
+              const key = p.id ?? `${p.cedula}-${i}`;
+              const clickable = coincide(p);
+              const open = expandido.has(key);
+              return (
+                <li key={key} className="p-3">
+                  <div className="flex items-center gap-2">
+                    {clickable ? (
+                      <button type="button" onClick={() => abrirReporte(p)} className="min-w-0 flex-1 text-left">
+                        <span className="block truncate text-sm font-semibold text-slate-900">{p.nombre || '—'}</span>
+                      </button>
+                    ) : (
+                      <span className="block min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">{p.nombre || '—'}</span>
+                    )}
+                    {clickable ? (
+                      <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">✓ Coincide</span>
+                    ) : (
+                      <span className="shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">Sin match</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleExp(key)}
+                      aria-expanded={open}
+                      aria-controls={`hd-${key}`}
+                      aria-label="Ver hospital y lista"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
+                    >
+                      <svg className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M7 10l5 5 5-5z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="mt-0.5 text-xs tabular-nums text-slate-500">{p.cedula || '—'}</div>
+                  {open && (
+                    <div id={`hd-${key}`} className="mt-2 space-y-1 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
+                      <div><span className="font-semibold text-slate-500">Hospital: </span>{p.hospital || '—'}</div>
+                      <div><span className="font-semibold text-slate-500">Lista: </span>{listaNombre(p) || '—'}</div>
+                      {listaFoto(p) && (
+                        <button type="button" onClick={() => setImgLista(listaFoto(p))} className="font-semibold text-indigo-600 hover:underline">
+                          Ver imagen del cartel
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {/* DESKTOP: tabla completa. */}
+        {status === 'ready' && filtradas.length > 0 && (
+          <table className="hidden w-full text-left text-sm sm:table">
             <thead className="sticky top-0 bg-slate-50 text-slate-500">
               <tr>
                 <th className="px-3 py-2 font-semibold">Nombre</th>
