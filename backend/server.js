@@ -16,6 +16,7 @@ import edificiosRouter from './routes/edificios.js';
 import uploadRouter from './routes/upload.js';
 import confirmacionesRouter from './routes/confirmaciones.js';
 import intelRouter from './routes/intel.js';
+import visitasRouter from './routes/visitas.js';
 
 dotenv.config();
 
@@ -46,7 +47,7 @@ app.use(express.urlencoded({ extended: true }));
 // El limiter general no debe ahogar la ingesta de intel ni el re-hosteo masivo de imagenes
 // (rafagas internas confiables). /api/intel y /api/upload tienen su propio limiter laxo.
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/intel') || req.path.startsWith('/api/upload')) return next();
+  if (req.path.startsWith('/api/intel') || req.path.startsWith('/api/upload') || req.path === '/api/visita') return next();
   return generalLimiter(req, res, next);
 });
 
@@ -62,6 +63,7 @@ app.use('/api/atrapados', atrapadosRouter);
 app.use('/api/edificios', edificiosRouter);
 app.use('/api/upload', uploadRouter); // incluye POST /api/upload/import (temporal, token-gated)
 app.use('/api/intel', intelRouter);
+app.use('/api', visitasRouter); // POST /api/visita, GET /api/visitas/resumen
 app.use('/api', confirmacionesRouter); // POST /api/:tipo/:id/confirmar
 
 // 404 + manejador de errores (siempre al final).
