@@ -154,6 +154,18 @@ export default function GaleriaDesaparecidos() {
   const handleUpdate = (id, patch) =>
     setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
 
+  // Click en una stat-card. Si el filtro ya está activo, resetea TODO (estado +
+  // parroquia + buscador) -> "mostrar todos". Si es otro, aplica ese estado.
+  const aplicarFiltroStat = (filtro) => {
+    if (filtro === estado) {
+      setEstado('');
+      setParroquia('');
+      setQ('');
+    } else {
+      setEstado(filtro);
+    }
+  };
+
   return (
     <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-6xl p-3 sm:p-4">
       <header className="mb-3">
@@ -170,7 +182,7 @@ export default function GaleriaDesaparecidos() {
         </p>
       </header>
 
-      <EstadisticasDirectorio items={visibles} estado={estado} onEstado={setEstado} />
+      <EstadisticasDirectorio items={visibles} estado={estado} onEstado={aplicarFiltroStat} />
 
       {/* Controles */}
       <div role="search" aria-label="Buscar y filtrar desaparecidos" className="sticky top-0 z-10 -mx-3 mb-4 flex flex-col gap-2 bg-slate-50/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:flex-row sm:px-4">

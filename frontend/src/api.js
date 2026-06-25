@@ -95,4 +95,11 @@ export const updateIntelPersona = (id, payload) =>
 // Estadísticas del directorio: { total, por_estado, con_foto, ... } para el panel vistoso.
 export const intelStats = () => http.get('/intel/personas/stats').then(unwrap)
 
+// Analítica de visitas (sin cookies). Beacon fire-and-forget; ignora errores.
+export const registrarVisita = (payload = {}) =>
+  http.post('/visita', payload).catch(() => {})
+
+// Resumen de visitas para ver el conteo: { total, hoy, por_dia, por_pais, por_path }.
+export const visitasResumen = () => http.get('/visitas/resumen').then(unwrap)
+
 export default http

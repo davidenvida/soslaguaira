@@ -6,7 +6,8 @@ import PersonSearch from './components/search/PersonSearch'
 import MatchView from './components/search/MatchView'
 import RescueTriage from './components/rescue/RescueTriage'
 import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecidos'
-import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelPersona } from './api'
+import ContadorVisitas from './components/ui/ContadorVisitas'
+import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelPersona, registrarVisita } from './api'
 
 // ============================================================================
 // SHELL de la app (Bruno). ENFOQUE: Directorio de Desaparecidos.
@@ -45,6 +46,11 @@ function AppInner() {
   const cerrar = useCallback(() => {
     setPanel(null)
     setPersona(null)
+  }, [])
+
+  // Analítica de visitas: un beacon por carga de página (fire-and-forget, sin cookies).
+  useEffect(() => {
+    registrarVisita({ path: window.location.pathname, referer: document.referrer })
   }, [])
 
   // Accesibilidad: cerrar el panel con Escape.
@@ -190,6 +196,9 @@ function AppInner() {
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
           <div className="absolute inset-0 overflow-y-auto">
             <GaleriaDesaparecidos />
+            <div className="px-4 pb-2 text-center">
+              <ContadorVisitas />
+            </div>
             {/* Espacio para que la última fila / "cargar más" no queden bajo el
                 botón flotante de Reportar ni el home indicator. */}
             <div aria-hidden="true" className="pb-safe h-24" />
