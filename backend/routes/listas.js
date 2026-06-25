@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { Router } from 'express';
 import multer from 'multer';
 import { pool, query } from '../db.js';
@@ -7,9 +10,21 @@ import { cleanStr, isNonEmptyString, normalizarCedula, toIntOrNull } from '../ut
 import { compareNombres } from '../utils/match.js';
 
 const router = Router();
+const UPLOAD_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'uploads');
 
-// Imagen en memoria (no se persiste): se manda a GPT y se descarta.
+// Imagen en memoria para mandar a GPT; si se auto-guarda la lista, se persiste a /uploads.
 const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
+
+const EXT_MIME = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
+
+// Persiste el buffer de imagen en /uploads y devuelve su foto_url. (image_url se guarda tal cual.)
+const guardarImagenLista = (buffer, mime) => {
+  if (!buffer) return null;
+  const ext = EXT_MIME[mime] || '.jpg';
+  const name = `lista-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  fs.writeFileSync(path.join(UPLOAD_DIR, name), buffer);
+  return `/uploads/${name}`;
+};
 
 // Prompt v1.3 de Hugo (FINAL, lockeado). Validado contra prod en lista de triage manuscrita
 // real: nombres 20/20, cero alucinacion, cedula 18/20. Incluye cedula, estado 'trasladado' y
@@ -167,7 +182,42 @@ router.post('/interpretar', writeLimiter, memUpload.single('foto'), async (req, 
       ? conEstado
       : await matchContraDirectorio(conEstado);
 
-    return ok(res, { personas: conMatch, total: conMatch.length, tipo_lista: estadoLista }, 'Lista interpretada.');
+    // Auto-guardar la lista interpretada (para 'Ver listas subidas'), salvo guardar=false.
+    let listaId = null;
+    let fotoUrl = null;
+    if (b.guardar !== false && b.guardar !== 'false' && conMatch.length) {
+      if (req.file) fotoUrl = guardarImagenLista(req.file.buffer, req.file.mimetype);
+      else if (isNonEmptyString(b.image_url)) fotoUrl = b.image_url.trim().slice(0, 500);
+      else if (isNonEmptyString(b.image_base64)) {
+        const raw = b.image_base64.replace(/^data:[^,]+,/, '');
+        fotoUrl = guardarImagenLista(Buffer.from(raw, 'base64'), b.mime || 'image/jpeg');
+      }
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const lista = (await client.query(
+          `INSERT INTO listas_manuscritas (fuente, tipo, descripcion, foto_url, total_entradas)
+           VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+          [cleanStr(b.fuente, 200), cleanStr(b.tipo, 60), cleanStr(b.descripcion, 1000), fotoUrl, conMatch.length]
+        )).rows[0];
+        for (const p of conMatch) {
+          await client.query(
+            `INSERT INTO lista_entradas (lista_id, nombre, cedula, estado, detalle, lugar)
+             VALUES ($1,$2,$3,$4,$5,$6)`,
+            [lista.id, cleanStr(p.nombre, 200), normalizarCedula(p.cedula), cleanStr(p.estado, 30), cleanStr(p.detalle, 500), cleanStr(p.lugar, 200)]
+          );
+        }
+        await client.query('COMMIT');
+        listaId = lista.id;
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('[listas] auto-guardado fallo:', e.message); // no romper la interpretacion
+      } finally {
+        client.release();
+      }
+    }
+
+    return ok(res, { personas: conMatch, total: conMatch.length, tipo_lista: estadoLista, lista_id: listaId, foto_url: fotoUrl }, 'Lista interpretada.');
   } catch (err) {
     if (err.status) return fail(res, err.message, err.status);
     next(err);
@@ -260,10 +310,33 @@ router.patch('/sensibles/:id', adminGate, async (req, res, next) => {
 router.get('/', adminGate, async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT id, fuente, tipo, descripcion, total_entradas, created_at
+      `SELECT id, fuente, tipo, descripcion, foto_url,
+              total_entradas AS total, created_at AS fecha
        FROM listas_manuscritas ORDER BY created_at DESC, id DESC`
     );
     return ok(res, rows, 'Listas guardadas.');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/listas/:id  -> entradas de una lista + sus coincidencias FRESCAS contra el directorio (admin).
+router.get('/:id', adminGate, async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const lista = (await query(
+      `SELECT id, fuente, tipo, descripcion, foto_url, total_entradas AS total, created_at AS fecha
+       FROM listas_manuscritas WHERE id = $1`, [id]
+    )).rows[0];
+    if (!lista) return fail(res, 'Lista no encontrada.', 404);
+
+    const entradas = (await query(
+      'SELECT nombre, cedula, estado, detalle, lugar FROM lista_entradas WHERE lista_id = $1 ORDER BY id', [id]
+    )).rows;
+    // Recalcula coincidencias contra el directorio actual (matcheo o no).
+    const conMatch = await matchContraDirectorio(entradas);
+    return ok(res, { ...lista, entradas: conMatch }, 'Detalle de lista.');
   } catch (err) {
     next(err);
   }

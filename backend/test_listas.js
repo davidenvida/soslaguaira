@@ -18,11 +18,13 @@ const url = get('--url');
 const file = get('--file');
 const instrucciones = get('--instrucciones') || undefined;
 const tipo = get('--tipo') || undefined;
+const fuente = get('--fuente') || undefined;
+const guardar = get('--guardar') === 'false' ? false : undefined; // --guardar false para no persistir
 
 const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' };
 
 async function run() {
-  const body = { instrucciones, tipo };
+  const body = { instrucciones, tipo, fuente, guardar };
   if (url) {
     body.image_url = url;
   } else if (file) {
