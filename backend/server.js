@@ -22,7 +22,11 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+// CORS_ORIGIN acepta uno o varios origenes separados por coma (ej dominio + URL de Railway).
+const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 // Seguridad. crossOriginResourcePolicy permisivo para servir /uploads al frontend.
 // img-src permite https: (fotos externas de X/IG/web) ademas de las re-hosteadas en /uploads.
@@ -35,7 +39,7 @@ app.use(helmet({
     },
   },
 }));
-app.use(cors({ origin: CORS_ORIGIN, methods: ['GET', 'POST', 'PATCH', 'OPTIONS'] }));
+app.use(cors({ origin: CORS_ORIGINS, methods: ['GET', 'POST', 'PATCH', 'OPTIONS'] }));
 app.use(express.json({ limit: '5mb' })); // batches de ingesta de intel
 app.use(express.urlencoded({ extended: true }));
 
@@ -66,7 +70,7 @@ app.use(errorHandler);
 
 const server = app.listen(PORT, () => {
   console.log(`[server] SOS La Guaira backend escuchando en http://localhost:${PORT}`);
-  console.log(`[server] CORS permitido para ${CORS_ORIGIN}`);
+  console.log(`[server] CORS permitido para ${CORS_ORIGINS.join(', ')}`);
 });
 
 // Cierre limpio.
