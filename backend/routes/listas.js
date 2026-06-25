@@ -197,9 +197,11 @@ router.post('/interpretar', writeLimiter, memUpload.single('foto'), async (req, 
       try {
         await client.query('BEGIN');
         const lista = (await client.query(
-          `INSERT INTO listas_manuscritas (fuente, tipo, descripcion, foto_url, total_entradas)
-           VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-          [cleanStr(b.fuente, 200), cleanStr(b.tipo, 60), cleanStr(b.descripcion, 1000), fotoUrl, conMatch.length]
+          `INSERT INTO listas_manuscritas
+             (fuente, tipo, descripcion, foto_url, fuente_url, total_entradas, subido_nombre, subido_apellido, subido_telefono)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+          [cleanStr(b.fuente, 200), cleanStr(b.tipo, 60), cleanStr(b.descripcion, 1000), fotoUrl, cleanStr(b.fuente_url, 500), conMatch.length,
+           cleanStr(b.subido_nombre, 120), cleanStr(b.subido_apellido, 120), cleanStr(b.subido_telefono, 40)]
         )).rows[0];
         for (const p of conMatch) {
           await client.query(
@@ -249,9 +251,11 @@ router.post('/', adminGate, writeLimiter, async (req, res, next) => {
     try {
       await client.query('BEGIN');
       const lista = (await client.query(
-        `INSERT INTO listas_manuscritas (fuente, tipo, descripcion, total_entradas)
-         VALUES ($1,$2,$3,$4) RETURNING id`,
-        [cleanStr(b.fuente, 200), cleanStr(b.tipo, 60), cleanStr(b.descripcion, 1000), validas.length]
+        `INSERT INTO listas_manuscritas
+           (fuente, tipo, descripcion, fuente_url, total_entradas, subido_nombre, subido_apellido, subido_telefono)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        [cleanStr(b.fuente, 200), cleanStr(b.tipo, 60), cleanStr(b.descripcion, 1000), cleanStr(b.fuente_url, 500), validas.length,
+         cleanStr(b.subido_nombre, 120), cleanStr(b.subido_apellido, 120), cleanStr(b.subido_telefono, 40)]
       )).rows[0];
 
       for (const p of validas) {
@@ -311,7 +315,8 @@ router.patch('/sensibles/:id', adminGate, async (req, res, next) => {
 router.get('/', adminGate, async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT id, fuente, tipo, descripcion, foto_url,
+      `SELECT id, fuente, tipo, descripcion, foto_url, fuente_url,
+              subido_nombre, subido_apellido, subido_telefono,
               total_entradas AS total, created_at AS fecha
        FROM listas_manuscritas ORDER BY created_at DESC, id DESC`
     );
@@ -325,7 +330,7 @@ router.get('/', adminGate, async (req, res, next) => {
 router.get('/publicas', async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT id, fuente, tipo, foto_url, total_entradas AS total, created_at AS fecha
+      `SELECT id, fuente, tipo, foto_url, fuente_url, total_entradas AS total, created_at AS fecha
        FROM listas_manuscritas WHERE ${SQL_TIPO_PUBLICO} ORDER BY created_at DESC, id DESC`
     );
     return ok(res, rows, 'Listas publicas.');
@@ -340,7 +345,7 @@ router.get('/publicas/:id', async (req, res, next) => {
     const id = toIntOrNull(req.params.id);
     if (id === null) return fail(res, 'ID invalido.');
     const lista = (await query(
-      `SELECT id, fuente, tipo, foto_url, total_entradas AS total, created_at AS fecha
+      `SELECT id, fuente, tipo, foto_url, fuente_url, total_entradas AS total, created_at AS fecha
        FROM listas_manuscritas WHERE id = $1 AND ${SQL_TIPO_PUBLICO}`, [id]
     )).rows[0];
     if (!lista) return fail(res, 'Lista no disponible.', 404);
@@ -361,7 +366,9 @@ router.get('/:id', adminGate, async (req, res, next) => {
     const id = toIntOrNull(req.params.id);
     if (id === null) return fail(res, 'ID invalido.');
     const lista = (await query(
-      `SELECT id, fuente, tipo, descripcion, foto_url, total_entradas AS total, created_at AS fecha
+      `SELECT id, fuente, tipo, descripcion, foto_url, fuente_url,
+              subido_nombre, subido_apellido, subido_telefono,
+              total_entradas AS total, created_at AS fecha
        FROM listas_manuscritas WHERE id = $1`, [id]
     )).rows[0];
     if (!lista) return fail(res, 'Lista no encontrada.', 404);
@@ -432,11 +439,12 @@ router.patch('/:id', adminGate, async (req, res, next) => {
     if (b.fuente !== undefined) addSet('fuente', cleanStr(b.fuente, 200));
     if (b.tipo !== undefined) addSet('tipo', cleanStr(b.tipo, 60));
     if (b.descripcion !== undefined) addSet('descripcion', cleanStr(b.descripcion, 1000));
+    if (b.fuente_url !== undefined) addSet('fuente_url', cleanStr(b.fuente_url, 500)); // backfill del enlace
     if (!sets.length) return fail(res, 'No hay campos para actualizar (fuente/tipo/descripcion).');
     params.push(id);
     const { rows } = await query(
       `UPDATE listas_manuscritas SET ${sets.join(', ')} WHERE id = $${params.length}
-       RETURNING id, fuente, tipo, descripcion, foto_url, total_entradas AS total, created_at AS fecha`,
+       RETURNING id, fuente, tipo, descripcion, foto_url, fuente_url, total_entradas AS total, created_at AS fecha`,
       params
     );
     if (!rows.length) return fail(res, 'Lista no encontrada.', 404);

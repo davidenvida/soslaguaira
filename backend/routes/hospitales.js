@@ -58,7 +58,7 @@ router.get('/personas', async (req, res, next) => {
       if (!rep) rep = desap.find((d) => nombresCoinciden(r.nombre, d.nombre_completo)) || null;
       return {
         nombre: r.nombre, cedula: r.cedula, hospital: r.hospital, estado: r.estado, lugar: r.lugar,
-        lista_id: r.lista_id, lista_fuente: r.hospital, lista_foto_url: r.lista_foto_url,
+        lista_id: r.lista_id, lista_fuente: r.hospital, lista_foto_url: r.lista_foto_url, lista_fuente_url: r.lista_fuente_url,
         coincidencia: rep
           ? {
               hay: true,
@@ -76,7 +76,7 @@ router.get('/personas', async (req, res, next) => {
     const filtroCon = ['con', 'true', 'si', '1'].includes(fc);
     const filtroSin = ['sin', 'false', 'no', '0'].includes(fc);
     const SELECT_ROW = `SELECT e.nombre, e.cedula, e.estado, e.lugar,
-                               l.fuente AS hospital, l.id AS lista_id, l.foto_url AS lista_foto_url
+                               l.fuente AS hospital, l.id AS lista_id, l.foto_url AS lista_foto_url, l.fuente_url AS lista_fuente_url
                         FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id WHERE ${where}`;
 
     let items;
