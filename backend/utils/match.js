@@ -69,6 +69,25 @@ export const nameSimilarity = (a, b) => {
   return Math.max(global, tokenScore);
 };
 
+// Comparacion ESTRICTA de nombres para match de identidad (evita falsos positivos).
+// Devuelve { shared, fullSim }:
+//  - shared = cuantos tokens (>=3 letras) del nombre A tienen un token fuerte (>=0.85) en B.
+//    Exigir shared>=2 obliga a que coincidan NOMBRE y APELLIDO, no uno solo.
+//  - fullSim = similitud global del nombre completo normalizado (para ranking).
+export const compareNombres = (a, b) => {
+  const na = normalize(a);
+  const nb = normalize(b);
+  const toks = (s) => s.split(' ').filter((t) => t.length >= 3);
+  const ta = toks(na);
+  const tb = toks(nb);
+  const simTok = (x, y) => { const m = Math.max(x.length, y.length); return m ? 1 - levenshtein(x, y) / m : 0; };
+  let shared = 0;
+  for (const x of ta) if (tb.some((y) => simTok(x, y) >= 0.85)) shared++;
+  const m = Math.max(na.length, nb.length);
+  const fullSim = m ? 1 - levenshtein(na, nb) / m : 0;
+  return { shared, fullSim: Number(fullSim.toFixed(3)) };
+};
+
 // Puntaje combinado de match entre persona base y candidato.
 // Pondera nombre (0.7) y cercania (0.3, decae a 0 sobre ~2km).
 export const matchScore = (base, candidate) => {

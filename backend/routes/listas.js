@@ -4,7 +4,7 @@ import { query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { writeLimiter } from '../middleware/rateLimit.js';
 import { cleanStr, isNonEmptyString } from '../utils/validate.js';
-import { nameSimilarity } from '../utils/match.js';
+import { compareNombres } from '../utils/match.js';
 
 const router = Router();
 
@@ -15,7 +15,7 @@ const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 
 const SYSTEM_PROMPT = `Eres un transcriptor de listas MANUSCRITAS de emergencia (ingresos a hospitales, fallecidos, heridos) tras un desastre en La Guaira, Venezuela.
 Transcribe EXACTAMENTE lo que ves, sin inventar ni completar nombres. Si algo es ilegible, marcalo en 'detalle'.
 Devuelve SOLO un JSON con esta forma exacta:
-{"personas":[{"nombre":"<nombre completo tal cual>","estado":"ingresado|fallecido|herido|desconocido","detalle":"<edad/notas/ilegible si aplica>","lugar":"<hospital o sector si aparece, si no vacio>"}]}
+{"personas":[{"nombre":"<nombre completo tal cual>","cedula":"<numero de cedula si aparece, solo digitos, si no vacio>","estado":"ingresado|fallecido|herido|desconocido","detalle":"<edad/notas/ilegible si aplica>","lugar":"<hospital o sector si aparece, si no vacio>"}]}
 Usa 'desconocido' para estado si la lista no lo indica. No agregues texto fuera del JSON.`;
 
 // Llama a GPT-4o con vision y devuelve el array de personas transcritas.
@@ -56,22 +56,54 @@ async function interpretarConGPT(imageUrl, instrucciones) {
   return Array.isArray(parsed.personas) ? parsed.personas : [];
 }
 
-// Match de los nombres transcritos contra personas_intel (fuzzy por nombre normalizado).
+const soloDigitos = (s) => (s ? String(s).replace(/\D/g, '') : '');
+
+// Extrae cedulas venezolanas (6-8 digitos) de un texto libre. Une grupos con . o espacio
+// (12.345.678 -> 12345678). Los boundaries evitan capturar telefonos (10-11 digitos).
+function extraerCedulas(text) {
+  if (!text) return [];
+  let t = String(text);
+  for (let i = 0; i < 3; i++) t = t.replace(/(\d)[.\s](\d)/g, '$1$2');
+  const out = new Set();
+  const re = /(?<!\d)(\d{6,8})(?!\d)/g;
+  let m;
+  while ((m = re.exec(t))) out.add(m[1]);
+  return [...out];
+}
+
+// Match de los nombres transcritos contra personas_intel.
+// CONFIANZA: 'alta' = cedula exacta (definitivo); 'media' = NOMBRE Y APELLIDO coinciden.
+// Evita falsos positivos por solo-apellido/solo-nombre (peligroso en rescate).
 async function matchContraDirectorio(personas) {
   if (!personas.length) return personas;
   const dir = (await query(
-    'SELECT id, nombre_completo, estado, parroquia FROM personas_intel WHERE duplicate_of IS NULL'
-  )).rows;
+    'SELECT id, nombre_completo, estado, parroquia, descripcion, notas, contacto FROM personas_intel WHERE duplicate_of IS NULL'
+  )).rows.map((r) => ({
+    ...r,
+    cedulas: extraerCedulas(`${r.nombre_completo} ${r.descripcion || ''} ${r.notas || ''} ${r.contacto || ''}`),
+  }));
+
   return personas.map((p) => {
-    const coincidencias = dir
-      .map((r) => ({
-        id: r.id, nombre_completo: r.nombre_completo, estado: r.estado, parroquia: r.parroquia,
-        score: Number(nameSimilarity(p.nombre, r.nombre_completo).toFixed(3)),
-      }))
-      .filter((c) => c.score >= 0.6)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-    return { ...p, coincidencias };
+    const cedDigits = soloDigitos(p.cedula) || extraerCedulas(`${p.nombre || ''} ${p.detalle || ''}`)[0] || '';
+    const cedula = cedDigits.length >= 6 && cedDigits.length <= 8 ? cedDigits : null;
+
+    const coincidencias = [];
+    for (const r of dir) {
+      const base = { id: r.id, nombre_completo: r.nombre_completo, estado: r.estado, parroquia: r.parroquia };
+      if (cedula && r.cedulas.includes(cedula)) {
+        coincidencias.push({ ...base, score: 1, confianza: 'alta', motivo: 'cedula' });
+        continue;
+      }
+      const { shared, fullSim } = compareNombres(p.nombre || '', r.nombre_completo);
+      if (shared >= 2) {
+        coincidencias.push({ ...base, score: fullSim, confianza: 'media', motivo: 'nombre_completo' });
+      }
+    }
+    // cedula (alta) primero, luego por score.
+    coincidencias.sort((a, b) =>
+      (a.confianza === 'alta' ? 0 : 1) - (b.confianza === 'alta' ? 0 : 1) || b.score - a.score
+    );
+    return { ...p, cedula, coincidencias: coincidencias.slice(0, 5) };
   });
 }
 
