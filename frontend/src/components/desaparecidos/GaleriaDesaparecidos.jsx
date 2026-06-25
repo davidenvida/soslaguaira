@@ -56,7 +56,9 @@ export default function GaleriaDesaparecidos() {
   const [source, setSource] = useState('api'); // api | mock
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(null); // total de reportes (meta del backend)
+  const [cargando, setCargando] = useState(false); // hay un fetch en curso (evita cargas dobles)
   const reqId = useRef(0);
+  const sentinelaRef = useRef(null);
 
   const filtros = useMemo(
     () => ({ q: qDebounced.trim(), estado, parroquia }),
@@ -73,6 +75,7 @@ export default function GaleriaDesaparecidos() {
     let cancelado = false;
     const esPrimeraPagina = page === 1;
     if (esPrimeraPagina) setStatus('loading');
+    setCargando(true);
 
     const aplicarMock = () => {
       if (cancelado || id !== reqId.current) return;
@@ -112,9 +115,30 @@ export default function GaleriaDesaparecidos() {
       }
     };
 
-    cargar();
+    cargar().finally(() => {
+      if (!cancelado && id === reqId.current) setCargando(false);
+    });
     return () => { cancelado = true; };
   }, [filtros, page]);
+
+  // Scroll infinito: cuando el sentinela del pie entra al viewport y hay más
+  // páginas (y no hay un fetch en curso), avanza a la siguiente. El observer se
+  // reconecta al cambiar hasMore/cargando (p. ej. tras un filtro), y el guard
+  // `!cargando` evita disparar varias cargas a la vez.
+  useEffect(() => {
+    const el = sentinelaRef.current;
+    if (!el || !hasMore) return undefined;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !cargando) {
+          setPage((n) => n + 1);
+        }
+      },
+      { rootMargin: '300px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, cargando]);
 
   const parroquias = useMemo(() => {
     const set = new Set(PARROQUIAS_SEED);
@@ -219,15 +243,16 @@ export default function GaleriaDesaparecidos() {
         </ul>
       )}
 
-      {hasMore && (
-        <div className="mt-4 flex justify-center">
-          <button
-            type="button"
-            onClick={() => setPage((n) => n + 1)}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Cargar más
-          </button>
+      {/* Sentinela del scroll infinito + indicador de carga de más páginas. */}
+      {hasMore && <div ref={sentinelaRef} aria-hidden="true" className="h-px w-full" />}
+
+      {cargando && visibles.length > 0 && (
+        <div className="flex items-center justify-center gap-2 py-4 text-sm text-slate-500" aria-live="polite">
+          <svg className="h-4 w-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
+          </svg>
+          Cargando más…
         </div>
       )}
     </section>
