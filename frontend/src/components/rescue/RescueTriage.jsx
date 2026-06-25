@@ -156,7 +156,9 @@ function TriageCard({ a, orden, actualizando, onVerEnMapa, onCambiarEstado }) {
             <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} aria-hidden="true" />
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
             <span className="ml-auto text-sm font-bold text-slate-800">
-              {a.cantidad_personas} {a.cantidad_personas === 1 ? 'persona' : 'personas'}
+              {a.cantidad_personas != null
+                ? `${a.cantidad_personas} ${Number(a.cantidad_personas) === 1 ? 'persona' : 'personas'}`
+                : '? personas'}
             </span>
           </div>
 

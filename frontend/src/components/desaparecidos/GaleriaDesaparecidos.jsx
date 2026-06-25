@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../../api';
 import useDebounce from '../search/useDebounce';
 import DesaparecidoCard from './DesaparecidoCard';
+import EstadisticasDirectorio from './EstadisticasDirectorio';
 import { ESTADO_LABEL } from './estados';
 import { mockDesaparecidos } from './mockDesaparecidos';
 
@@ -144,6 +145,8 @@ export default function GaleriaDesaparecidos() {
           Reportes recopilados de redes y fuentes públicas. {source === 'mock' && '(datos de prueba)'}
         </p>
       </header>
+
+      <EstadisticasDirectorio items={visibles} />
 
       {/* Controles */}
       <div role="search" aria-label="Buscar y filtrar desaparecidos" className="sticky top-0 z-10 -mx-3 mb-4 flex flex-col gap-2 bg-slate-50/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:flex-row sm:px-4">

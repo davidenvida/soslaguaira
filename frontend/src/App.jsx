@@ -6,7 +6,7 @@ import PersonSearch from './components/search/PersonSearch'
 import MatchView from './components/search/MatchView'
 import RescueTriage from './components/rescue/RescueTriage'
 import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecidos'
-import { listPersonas, matchPersona, listAtrapados, updateAtrapado } from './api'
+import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelPersona } from './api'
 
 // ============================================================================
 // SHELL de la app (Bruno). ENFOQUE: Directorio de Desaparecidos.
@@ -96,6 +96,22 @@ function AppInner() {
     },
     [cerrar],
   )
+
+  // Actualizar estado en el triaje de rescate, enrutando segun el origen:
+  // los atrapados que vienen del directorio llevan id 'intel-<id>' y se
+  // actualizan por el endpoint de intel. El enum de intel no tiene
+  // 'en_rescate'/'rescatado', así que mapeamos "rescatado" -> "a_salvo"
+  // (rescatado = ya no atrapado = a salvo) y el estado intermedio no se persiste.
+  const updateEstadoRescate = useCallback((id, payload) => {
+    const sid = String(id)
+    if (sid.startsWith('intel-')) {
+      const realId = sid.slice('intel-'.length)
+      const estado = payload?.estado === 'rescatado' ? 'a_salvo' : payload?.estado
+      if (estado === 'en_rescate') return Promise.resolve({ id: realId })
+      return updateIntelPersona(realId, { ...payload, estado })
+    }
+    return updateAtrapado(id, payload)
+  }, [])
 
   // Tras crear un reporte: recarga, recentra (mapa) si hay punto, y cierra.
   const onSuccess = useCallback(
@@ -258,7 +274,7 @@ function AppInner() {
               {panel === 'rescate' && (
                 <RescueTriage
                   fetchAtrapados={listAtrapados}
-                  updateEstado={updateAtrapado}
+                  updateEstado={updateEstadoRescate}
                   onVerEnMapa={verEnMapa}
                   pollMs={15000}
                 />

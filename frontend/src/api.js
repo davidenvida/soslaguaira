@@ -92,4 +92,7 @@ export const intelPersonas = (params = {}) =>
 export const updateIntelPersona = (id, payload) =>
   http.patch(`/intel/personas/${id}`, payload).then(unwrap)
 
+// Estadísticas del directorio: { total, por_estado, con_foto, ... } para el panel vistoso.
+export const intelStats = () => http.get('/intel/personas/stats').then(unwrap)
+
 export default http
