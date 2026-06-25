@@ -30,6 +30,12 @@ const patchIntel = (id, payload) =>
     ? api.updateIntelPersona(id, payload)
     : http.patch(`/intel/personas/${id}`, payload);
 
+// POST de solicitud de retiro (takedown). Tolerante al named export de api.js.
+const flagIntel = (id, payload) =>
+  typeof api.flagIntelPersona === 'function'
+    ? api.flagIntelPersona(id, payload)
+    : http.post(`/intel/personas/${id}/flag`, payload);
+
 function Placeholder() {
   return (
     <div className="flex h-44 w-full items-center justify-center bg-slate-100 text-slate-300">
@@ -45,6 +51,11 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
   const [zoom, setZoom] = useState(false);
   const [marcando, setMarcando] = useState(false);
   const [errorMarca, setErrorMarca] = useState(false);
+  const [flagAbierto, setFlagAbierto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [enviandoFlag, setEnviandoFlag] = useState(false);
+  const [flagEnviado, setFlagEnviado] = useState(false);
+  const [flagError, setFlagError] = useState(false);
 
   const foto = resolveFoto(persona);
   const nom = nombre(persona);
@@ -66,6 +77,23 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
       setErrorMarca(true);
     } finally {
       setMarcando(false);
+    }
+  };
+
+  const solicitarRetiro = async () => {
+    if (enviandoFlag) return;
+    setEnviandoFlag(true);
+    setFlagError(false);
+    try {
+      await flagIntel(persona.id, {
+        motivo: motivo.trim() || 'Solicitud de retiro desde el directorio web',
+      });
+      setFlagEnviado(true);
+      setFlagAbierto(false);
+    } catch {
+      setFlagError(true);
+    } finally {
+      setEnviandoFlag(false);
     }
   };
 
@@ -158,6 +186,57 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
           <p className="mt-1 text-center text-[11px] text-red-600" role="alert">
             No se pudo actualizar. Intenta de nuevo.
           </p>
+        )}
+
+        {/* Privacidad: solicitud discreta de retiro de la ficha. */}
+        {flagEnviado ? (
+          <p className="mt-2 text-center text-[11px] text-slate-400">
+            Solicitud enviada. Gracias.
+          </p>
+        ) : flagAbierto ? (
+          <div className="mt-2 space-y-1.5">
+            <label htmlFor={`motivo-${persona.id}`} className="sr-only">
+              Motivo de la solicitud de retiro
+            </label>
+            <textarea
+              id={`motivo-${persona.id}`}
+              rows={2}
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Motivo (opcional): soy familiar, dato incorrecto…"
+              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={solicitarRetiro}
+                disabled={enviandoFlag}
+                className="flex-1 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+              >
+                {enviandoFlag ? 'Enviando…' : 'Enviar solicitud'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlagAbierto(false)}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+              >
+                Cancelar
+              </button>
+            </div>
+            {flagError && (
+              <p className="text-center text-[11px] text-red-600" role="alert">
+                No se pudo enviar. Intenta de nuevo.
+              </p>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setFlagAbierto(true)}
+            className="mt-2 self-center text-[11px] text-slate-400 hover:text-slate-600 hover:underline"
+          >
+            Solicitar quitar esta ficha
+          </button>
         )}
       </div>
 
