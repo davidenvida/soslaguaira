@@ -7,7 +7,7 @@ import { pool, query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { writeLimiter } from '../middleware/rateLimit.js';
 import { cleanStr, isNonEmptyString, normalizarCedula, toIntOrNull } from '../utils/validate.js';
-import { compareNombres } from '../utils/match.js';
+import { compareNombres, nombresCoinciden } from '../utils/match.js';
 import { SQL_TIPO_PUBLICO } from '../utils/listasTipo.js';
 
 const router = Router();
@@ -137,8 +137,8 @@ async function matchContraDirectorio(personas) {
         coincidencias.push({ ...base, score: 1, confianza: 'alta', motivo: 'cedula' });
         continue;
       }
-      const { shared, fullSim } = compareNombres(p.nombre || '', r.nombre_completo);
-      if (shared >= 2) {
+      if (nombresCoinciden(p.nombre || '', r.nombre_completo)) {
+        const { fullSim } = compareNombres(p.nombre || '', r.nombre_completo);
         coincidencias.push({ ...base, score: fullSim, confianza: 'media', motivo: 'nombre_completo' });
       }
     }

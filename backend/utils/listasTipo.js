@@ -1,6 +1,7 @@
-// Filtro SQL de tipos de lista PUBLICABLES (no sensibles): ingresados/trasladados/heridos.
-// Excluye SIEMPRE fallecidos/morgue. Fuente unica para endpoints publicos de listas y hospitales.
+// Filtro SQL de tipos de lista PUBLICABLES. Directiva de David: publicar TODO salvo FALLECIDOS.
+// -> publica cualquier tipo explicito no sensible (ingresados/trasladados/heridos/refugiados/otro...),
+//    EXCLUYE fallecidos/morgue y las listas sin tipo (huerfanas).
 // Usa la columna 'tipo' (de listas_manuscritas); en joins resuelve sin ambiguedad
 // porque lista_entradas no tiene columna 'tipo'.
 export const SQL_TIPO_PUBLICO =
-  "(tipo ~* 'ingres|admit|hospital|atend|triage|trasl|refer|remit|herid|lesion|quemad') AND (tipo !~* 'fallec|muert|morgue|obito|deces')";
+  "(tipo IS NOT NULL AND tipo <> '' AND tipo !~* 'fallec|muert|morgue|obito|deces')";

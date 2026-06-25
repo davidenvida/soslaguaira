@@ -88,6 +88,29 @@ export const compareNombres = (a, b) => {
   return { shared, fullSim: Number(fullSim.toFixed(3)) };
 };
 
+// Match ESTRICTO de identidad por nombre (para coincidencias automaticas, NO busqueda manual).
+// Exige: (a) >=2 tokens compartidos Y (b) overlap de APELLIDO (el ultimo token de alguno
+// aparece en el otro). Asi 'Maria Fernanda Rojas' NO matchea 'Maria Fernanda Rey Rujano'
+// (nombres de pila iguales pero apellido distinto). Acepta nombre parcial vs completo si el
+// apellido coincide ('Maria Gonzalez' vs 'Maria Jose Gonzalez Perez').
+export const nombresCoinciden = (a, b) => {
+  const na = normalize(a);
+  const nb = normalize(b);
+  const ta = na.split(' ').filter((t) => t.length >= 3);
+  const tb = nb.split(' ').filter((t) => t.length >= 3);
+  if (!ta.length || !tb.length) return false;
+  const sim = (x, y) => { const m = Math.max(x.length, y.length); return m ? 1 - levenshtein(x, y) / m : 0; };
+
+  let shared = 0;
+  for (const x of ta) if (tb.some((y) => sim(x, y) >= 0.85)) shared++;
+  if (shared < 2) return false;
+
+  const lastA = ta[ta.length - 1];
+  const lastB = tb[tb.length - 1];
+  const apellidoOverlap = tb.some((y) => sim(lastA, y) >= 0.85) || ta.some((x) => sim(lastB, x) >= 0.85);
+  return apellidoOverlap;
+};
+
 // Puntaje combinado de match entre persona base y candidato.
 // Pondera nombre (0.7) y cercania (0.3, decae a 0 sobre ~2km).
 export const matchScore = (base, candidate) => {

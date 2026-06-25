@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { toIntOrNull } from '../utils/validate.js';
-import { compareNombres } from '../utils/match.js';
+import { nombresCoinciden } from '../utils/match.js';
 import { SQL_TIPO_PUBLICO } from '../utils/listasTipo.js';
 import { buscarEnHospitales } from '../utils/busqueda.js';
 
@@ -54,7 +54,7 @@ router.get('/personas', async (req, res, next) => {
 
     const conCoincidencia = (r) => {
       let rep = (r.cedula && porCedula.get(r.cedula)) || null;
-      if (!rep) rep = desap.find((d) => compareNombres(r.nombre, d.nombre_completo).shared >= 2) || null;
+      if (!rep) rep = desap.find((d) => nombresCoinciden(r.nombre, d.nombre_completo)) || null;
       return {
         nombre: r.nombre, cedula: r.cedula, hospital: r.hospital, estado: r.estado, lugar: r.lugar,
         coincidencia: rep
