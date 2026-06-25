@@ -170,9 +170,17 @@ function TriageCard({ a, orden, actualizando, onVerEnMapa, onCambiarEstado }) {
           {a.direccion && <p className="text-sm text-slate-600">{a.direccion}</p>}
           {a.descripcion && <p className="mt-1 text-sm text-slate-700">{a.descripcion}</p>}
 
-          <p className="mt-1.5 font-mono text-xs text-slate-500">
-            📍 {formatCoords(a.lat, a.lng)}
-          </p>
+          {navegable ? (
+            <p className="mt-1.5 font-mono text-xs text-slate-500">
+              📍 {formatCoords(a.lat, a.lng)}
+            </p>
+          ) : (
+            <p className="mt-1.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                📍 Ubicación por confirmar
+              </span>
+            </p>
+          )}
         </div>
       </div>
 
