@@ -3,6 +3,7 @@
 import { LayerGroup, Marker, Popup } from 'react-leaflet';
 import { personaEstado } from './mapColors';
 import { personaIcon } from './markerIcons';
+import PopupFoto from './PopupFoto';
 import { resolveFoto, contactoNombre, contactoTelefono, hasLatLng } from './fields';
 
 export default function PersonasLayer({ personas = [], estadoFiltro = 'todos' }) {
@@ -20,7 +21,7 @@ export default function PersonasLayer({ personas = [], estadoFiltro = 'todos' })
           <Marker key={p.id} position={[p.lat, p.lng]} icon={personaIcon(est.color)}>
             <Popup>
               <div className="sos-popup">
-                {foto && <img className="sos-popup__img" src={foto} alt={p.nombre || 'Persona'} />}
+                <PopupFoto src={foto} alt={`Foto de ${p.nombre || 'persona'}`} />
                 <div className="sos-popup__body">
                   <span className="sos-popup__badge" style={{ background: est.color }}>
                     {est.label}

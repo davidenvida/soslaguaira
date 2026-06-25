@@ -25,3 +25,4 @@ export { default as LayersPanel } from './LayersPanel';
 export { default as PersonasLayer } from './PersonasLayer';
 export { default as AtrapadosLayer } from './AtrapadosLayer';
 export { default as EdificiosLayer } from './EdificiosLayer';
+export { default as DesaparecidosLayer } from './DesaparecidosLayer';

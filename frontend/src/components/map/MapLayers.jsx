@@ -6,6 +6,7 @@ import { useMapData } from './MapDataContext';
 import EdificiosLayer from './EdificiosLayer';
 import PersonasLayer from './PersonasLayer';
 import AtrapadosLayer from './AtrapadosLayer';
+import DesaparecidosLayer from './DesaparecidosLayer';
 
 export default function MapLayers() {
   const { data, visibility, filters } = useMapData();
@@ -13,6 +14,9 @@ export default function MapLayers() {
     <>
       {visibility.edificios && (
         <EdificiosLayer edificios={data.edificios} estadoFiltro={filters.edificios} />
+      )}
+      {visibility.desaparecidos && (
+        <DesaparecidosLayer desaparecidos={data.desaparecidos} estadoFiltro={filters.desaparecidos} />
       )}
       {visibility.personas && (
         <PersonasLayer personas={data.personas} estadoFiltro={filters.personas} />

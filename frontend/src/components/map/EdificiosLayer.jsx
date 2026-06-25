@@ -3,6 +3,7 @@
 import { LayerGroup, Marker, Circle, Popup } from 'react-leaflet';
 import { edificioEstado } from './mapColors';
 import { edificioIcon } from './markerIcons';
+import PopupFoto from './PopupFoto';
 import { resolveFoto, atrapadosEstimados, hasLatLng } from './fields';
 
 export default function EdificiosLayer({ edificios = [], estadoFiltro = 'todos' }) {
@@ -26,7 +27,7 @@ export default function EdificiosLayer({ edificios = [], estadoFiltro = 'todos' 
             <Marker position={[e.lat, e.lng]} icon={edificioIcon(est.color)}>
               <Popup>
                 <div className="sos-popup">
-                  {foto && <img className="sos-popup__img" src={foto} alt={e.nombre || 'Edificio'} />}
+                  <PopupFoto src={foto} alt={`Foto de ${e.nombre || 'edificio'}`} variant="edificio" />
                   <div className="sos-popup__body">
                     <span className="sos-popup__badge" style={{ background: est.color }}>
                       {est.label}

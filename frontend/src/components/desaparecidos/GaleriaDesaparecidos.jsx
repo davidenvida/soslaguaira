@@ -124,8 +124,13 @@ export default function GaleriaDesaparecidos() {
   const visibles = items; // ya filtrados (server o mock)
   const vacio = status === 'ready' && visibles.length === 0;
 
+  // Actualización optimista tras marcar a una persona (p. ej. a salvo): refleja
+  // el cambio al instante sin recargar toda la lista.
+  const handleUpdate = (id, patch) =>
+    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
   return (
-    <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-5xl p-3 sm:p-4">
+    <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-6xl p-3 sm:p-4">
       <header className="mb-3">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-lg font-bold text-slate-900">Desaparecidos</h2>
@@ -141,7 +146,7 @@ export default function GaleriaDesaparecidos() {
       </header>
 
       {/* Controles */}
-      <div role="search" aria-label="Buscar y filtrar desaparecidos" className="mb-4 flex flex-col gap-2 sm:flex-row">
+      <div role="search" aria-label="Buscar y filtrar desaparecidos" className="sticky top-0 z-10 -mx-3 mb-4 flex flex-col gap-2 bg-slate-50/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:flex-row sm:px-4">
         <div className="flex-1">
           <label htmlFor="desap-q" className="sr-only">Buscar por nombre</label>
           <input
@@ -205,7 +210,7 @@ export default function GaleriaDesaparecidos() {
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {visibles.map((p) => (
             <li key={p.id ?? `${p.nombre_completo}-${p.fecha_reporte}`}>
-              <DesaparecidoCard persona={p} />
+              <DesaparecidoCard persona={p} onUpdate={handleUpdate} />
             </li>
           ))}
         </ul>

@@ -9,12 +9,14 @@ const ESTADOS_POR_CAPA = {
   personas: PERSONA_ESTADOS,
   atrapados: ATRAPADO_ESTADOS,
   edificios: EDIFICIO_ESTADOS,
+  desaparecidos: PERSONA_ESTADOS, // mismos estados que personas
 };
 
 const TITULOS = {
   personas: 'Personas',
   atrapados: 'Atrapados',
   edificios: 'Edificios',
+  desaparecidos: 'Desaparecidos',
 };
 
 function CapaControl({ capa }) {
@@ -93,6 +95,7 @@ export default function LayersPanel() {
         {abierto && (
           <div className="space-y-2 px-3 pb-3">
             <CapaControl capa="atrapados" />
+            <CapaControl capa="desaparecidos" />
             <CapaControl capa="personas" />
             <CapaControl capa="edificios" />
 

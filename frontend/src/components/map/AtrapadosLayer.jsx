@@ -3,6 +3,7 @@
 import { LayerGroup, Marker, Popup } from 'react-leaflet';
 import { atrapadoEstado } from './mapColors';
 import { atrapadoIcon } from './markerIcons';
+import PopupFoto from './PopupFoto';
 import { resolveFoto, contactoNombre, cantidadPersonas, hasLatLng } from './fields';
 
 const wazeUrl = (lat, lng) => `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
@@ -29,7 +30,7 @@ export default function AtrapadosLayer({ atrapados = [], estadoFiltro = 'todos' 
           >
             <Popup>
               <div className="sos-popup">
-                {foto && <img className="sos-popup__img" src={foto} alt="Atrapados" />}
+                <PopupFoto src={foto} alt="Personas atrapadas" />
                 <div className="sos-popup__body">
                   <span className="sos-popup__badge" style={{ background: est.color }}>
                     {est.label}

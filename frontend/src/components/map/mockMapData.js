@@ -48,6 +48,27 @@ export const mockAtrapados = [
   },
 ];
 
+// Intel geocodificado (capa de desaparecidos sobre el mapa). Algunos comparten
+// el mismo punto (centroide de parroquia) a propósito, para probar el spread
+// anti-colisión. Reemplazado por el shape real de Enzo cuando esté geocodificado.
+export const mockDesaparecidosGeo = [
+  { id: 'd1', nombre_completo: 'Rosa Elena Marcano', estado: 'desaparecido', parroquia: 'Maiquetía',
+    ultima_ubicacion: 'Sector Atlántida', foto_url: '', fuente_url: 'https://twitter.com/example/status/1',
+    lat: 10.5990, lng: -66.9810, geo_fuente: 'edificio' },
+  { id: 'd2', nombre_completo: 'Wilfredo Antonio Salas', estado: 'desaparecido', parroquia: 'Caraballeda',
+    ultima_ubicacion: 'Urb. Caribe', foto_url: '', fuente_url: 'https://facebook.com/example',
+    lat: 10.6130, lng: -66.8480, geo_fuente: 'parroquia' },
+  { id: 'd3', nombre_completo: 'Pedro José Linares', estado: 'visto_con_vida', parroquia: 'Caraballeda',
+    ultima_ubicacion: 'Casco histórico', foto_url: '', fuente_url: 'https://instagram.com/p/example',
+    lat: 10.6130, lng: -66.8480, geo_fuente: 'parroquia' },
+  { id: 'd4', nombre_completo: 'Yusneidy Carolina Ramos', estado: 'a_salvo', parroquia: 'Caraballeda',
+    ultima_ubicacion: 'Refugio', foto_url: '', fuente_url: 'https://twitter.com/example/status/2',
+    lat: 10.6130, lng: -66.8480, geo_fuente: 'parroquia' },
+  { id: 'd5', nombre_completo: 'José Gregorio Pérez', estado: 'desaparecido', parroquia: 'Macuto',
+    ultima_ubicacion: 'Calle 8', foto_url: '', fuente_url: 'https://twitter.com/example/status/3',
+    lat: 10.6062, lng: -66.9277, geo_fuente: 'edificio' },
+];
+
 export const mockEdificios = [
   {
     id: 'e1', nombre: 'Edif. Macuto', lat: 10.6062, lng: -66.9277, direccion: 'Calle 8, Macuto',

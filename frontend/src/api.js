@@ -88,4 +88,8 @@ export const uploadFoto = subirFoto
 export const intelPersonas = (params = {}) =>
   http.get('/intel/personas', { params }).then(unwrap)
 
+// Actualiza una ficha del directorio (estado 'a_salvo', foto_url, enriquecer...).
+export const updateIntelPersona = (id, payload) =>
+  http.patch(`/intel/personas/${id}`, payload).then(unwrap)
+
 export default http

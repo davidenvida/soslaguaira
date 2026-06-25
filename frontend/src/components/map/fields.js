@@ -1,7 +1,6 @@
-// Acceso tolerante a campos: Enzo puede devolver JSON en camelCase (segun el
-// contrato) o snake_case (como las columnas SQL del modelo). Estas capas leen
-// ambos para no bloquearse en la integracion. Si Enzo confirma camelCase, esto
-// igual funciona y no estorba.
+// Acceso tolerante a campos: el backend devuelve snake_case (foto_url, etc.);
+// igual leemos camelCase como respaldo para no bloquearnos en la integracion.
+import { fotoUrl as toBackendUrl } from '../../api';
 
 export const pick = (obj, ...keys) => {
   for (const k of keys) {
@@ -16,12 +15,13 @@ export const contactoTelefono = (o) => pick(o, 'contactoTelefono', 'contacto_tel
 export const cantidadPersonas = (o) => pick(o, 'cantidadPersonas', 'cantidad_personas');
 export const atrapadosEstimados = (o) => pick(o, 'atrapadosEstimados', 'atrapados_estimados');
 
-// Resuelve la URL de la foto: si es un path relativo (/uploads/..), lo deja tal
-// cual (Vite proxya al backend); si es absoluta, la respeta.
+// Resuelve la URL de la foto lista para <img src>: toma foto_url del registro y
+// la pasa por el helper de api.js (absoluta -> tal cual; /uploads/... -> antepone
+// el dominio del backend en produccion, proxy de Vite en dev).
 export const resolveFoto = (o) => {
   const url = fotoUrl(o);
   if (!url) return undefined;
-  return url;
+  return toBackendUrl(url);
 };
 
 // Coordenadas validas (Number). Descarta registros sin ubicacion.

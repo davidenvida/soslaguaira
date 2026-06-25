@@ -1,15 +1,20 @@
-// Tarjeta de una persona desaparecida. Foto con placeholder, badge de estado,
-// datos y enlace al post original. Backend es snake_case (verificado por Bruno);
-// igual leo camelCase como respaldo.
+// Tarjeta de una persona desaparecida. Foto (ampliable en lightbox), badge de
+// estado, datos, contacto, enlace al post original y botón para marcarla a salvo.
+// Backend snake_case (verificado); igual leo camelCase como respaldo.
 import { useState } from 'react';
+import http, { fotoUrl as toBackendUrl } from '../../api';
+import * as api from '../../api';
+import Lightbox from '../ui/Lightbox';
 import { estadoLabel, estadoColor } from './estados';
 
-// /uploads/... lo proxya Vite; http(s) directo se respeta tal cual.
-const resolveFoto = (o) => o?.foto_url || o?.fotoUrl || '';
+// Pasa la foto por el helper de api.js: /uploads/... -> dominio backend en prod
+// (proxy de Vite en dev); URL absoluta -> tal cual.
+const resolveFoto = (o) => toBackendUrl(o?.foto_url || o?.fotoUrl || '');
 const nombre = (o) => o?.nombre_completo || o?.nombreCompleto || o?.nombre || 'Sin nombre';
 const ubicacion = (o) => o?.ultima_ubicacion || o?.ultimaUbicacion || '';
 const fuente = (o) => o?.fuente_url || o?.fuenteUrl || '';
 const fecha = (o) => o?.fecha_reporte || o?.fechaReporte || '';
+const contacto = (o) => o?.contacto || o?.contacto_nombre || '';
 
 const fmtFecha = (iso) => {
   if (!iso) return '';
@@ -17,6 +22,13 @@ const fmtFecha = (iso) => {
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
 };
+
+// PATCH del intel. Usa el named export de api.js si existe; si no, cae al
+// http.patch directo para no bloquearse.
+const patchIntel = (id, payload) =>
+  typeof api.updateIntelPersona === 'function'
+    ? api.updateIntelPersona(id, payload)
+    : http.patch(`/intel/personas/${id}`, payload);
 
 function Placeholder() {
   return (
@@ -28,13 +40,34 @@ function Placeholder() {
   );
 }
 
-export default function DesaparecidoCard({ persona }) {
+export default function DesaparecidoCard({ persona, onUpdate }) {
   const [imgError, setImgError] = useState(false);
+  const [zoom, setZoom] = useState(false);
+  const [marcando, setMarcando] = useState(false);
+  const [errorMarca, setErrorMarca] = useState(false);
+
   const foto = resolveFoto(persona);
   const nom = nombre(persona);
   const ubic = ubicacion(persona);
   const url = fuente(persona);
+  const cont = contacto(persona);
   const f = fmtFecha(fecha(persona));
+  const yaASalvo = persona.estado === 'a_salvo';
+
+  const marcarASalvo = async () => {
+    if (marcando || yaASalvo) return;
+    setMarcando(true);
+    setErrorMarca(false);
+    try {
+      // La nota se anexa a `notas` en backend (trazabilidad del origen del cambio).
+      await patchIntel(persona.id, { estado: 'a_salvo', nota: 'Marcada a salvo desde el directorio web' });
+      onUpdate?.(persona.id, { estado: 'a_salvo' });
+    } catch {
+      setErrorMarca(true);
+    } finally {
+      setMarcando(false);
+    }
+  };
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
@@ -44,7 +77,17 @@ export default function DesaparecidoCard({ persona }) {
           alt={`Foto de ${nom}`}
           loading="lazy"
           onError={() => setImgError(true)}
-          className="h-44 w-full bg-slate-100 object-cover"
+          onClick={() => setZoom(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setZoom(true);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          title="Ampliar foto"
+          className="h-44 w-full cursor-zoom-in bg-slate-100 object-cover"
         />
       ) : (
         <Placeholder />
@@ -70,6 +113,13 @@ export default function DesaparecidoCard({ persona }) {
           </p>
         )}
 
+        {cont && (
+          <p className="text-xs text-slate-600">
+            <span className="font-semibold text-slate-500">Contacto: </span>
+            {cont}
+          </p>
+        )}
+
         {persona.descripcion && (
           <p className="text-xs leading-snug text-slate-700 line-clamp-3">{persona.descripcion}</p>
         )}
@@ -88,7 +138,37 @@ export default function DesaparecidoCard({ persona }) {
             </a>
           )}
         </div>
+
+        {/* Mantiene el directorio vivo: marcar como encontrada / a salvo. */}
+        {!yaASalvo ? (
+          <button
+            type="button"
+            onClick={marcarASalvo}
+            disabled={marcando}
+            className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {marcando ? 'Marcando…' : 'Marcar encontrado / a salvo'}
+          </button>
+        ) : (
+          <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-center text-xs font-semibold text-emerald-700">
+            ✓ Reportada a salvo
+          </p>
+        )}
+        {errorMarca && (
+          <p className="mt-1 text-center text-[11px] text-red-600" role="alert">
+            No se pudo actualizar. Intenta de nuevo.
+          </p>
+        )}
       </div>
+
+      {zoom && (
+        <Lightbox
+          src={foto}
+          alt={`Foto de ${nom}`}
+          caption={f ? `${nom} · ${f}` : nom}
+          onClose={() => setZoom(false)}
+        />
+      )}
     </article>
   );
 }

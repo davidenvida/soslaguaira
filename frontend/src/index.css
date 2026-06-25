@@ -82,6 +82,15 @@ body {
   background: rgba(255, 255, 255, 0.8);
 }
 
+/* Popups del mapa principal: nunca exceden el viewport en móviles angostos y
+   los textos largos (URLs de fuente, direcciones) no desbordan el ancho. Mayor
+   especificidad que la regla de ancho de Gio (mapLayers.css) para estas dos
+   propiedades; el ancho de 230px que él define se mantiene en pantallas normales. */
+.sos-map-shell .leaflet-popup-content {
+  max-width: calc(100vw - 32px);
+  overflow-wrap: anywhere;
+}
+
 /* ----------------------------------------------------------------------------
    Accesibilidad: foco visible solo para navegacion por teclado, sin molestar al
    usuario de mouse/touch. Contraste alto para que se vea sobre rojo/verde/ambar.

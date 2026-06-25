@@ -9,14 +9,12 @@ import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecido
 import { listPersonas, matchPersona, listAtrapados, updateAtrapado } from './api'
 
 // ============================================================================
-// SHELL de la app (Bruno). Integra los módulos del equipo:
-//   - Capas + provider de datos (Gio)  -> components/map
-//   - Formularios (Gaby)               -> components/forms
-//   - Buscador + match (Iris)          -> components/search
-//   - Triaje de rescate (Iris)         -> components/rescue
-//   - Responsive / a11y (Fiona)        -> index.css + clases en este shell
-// Todo cae a datos mock si el backend (Enzo) aún no responde, así la app
-// funciona de punta a punta desde ya y se "enciende" sola cuando el API esté.
+// SHELL de la app (Bruno). ENFOQUE: Directorio de Desaparecidos.
+// Dos vistas de la MISMA data, conmutables con el toggle Directorio | Mapa:
+//   - Directorio: galería a pantalla completa (vista principal).
+//   - Mapa: los desaparecidos geolocalizados + capas (Gio).
+// Los paneles (reportar/buscar/atrapado/edificio/rescate) son overlays
+// accesibles desde ambas vistas. a11y/responsive: Fiona.
 // ============================================================================
 
 const PANELS = {
@@ -25,7 +23,6 @@ const PANELS = {
   atrapado: { titulo: '🆘 Reportar persona ATRAPADA — rescate urgente', color: 'bg-red-600' },
   edificio: { titulo: 'Reportar estado de un edificio', color: 'bg-violet-600' },
   rescate: { titulo: 'Panel de rescate (triaje)', color: 'bg-red-700' },
-  desaparecidos: { titulo: 'Personas desaparecidas', color: 'bg-rose-700' },
 }
 
 export default function App() {
@@ -37,20 +34,20 @@ export default function App() {
 }
 
 function AppInner() {
+  const [vista, setVista] = useState('directorio') // directorio | mapa
   const [panel, setPanel] = useState(null)
   const [mapTarget, setMapTarget] = useState(null) // recentra el mapa al "Ver en mapa"
   const [persona, setPersona] = useState(null) // resultado elegido en buscador -> match
   const [reportarTab, setReportarTab] = useState('busco') // busco | salvo
   const { refresh } = useMapData()
+  const dialogRef = useRef(null)
 
   const cerrar = useCallback(() => {
     setPanel(null)
     setPersona(null)
   }, [])
 
-  const dialogRef = useRef(null)
-
-  // Accesibilidad: cerrar el panel con Escape (teclado).
+  // Accesibilidad: cerrar el panel con Escape.
   useEffect(() => {
     if (!panel) return
     const onKey = (e) => e.key === 'Escape' && cerrar()
@@ -58,17 +55,13 @@ function AppInner() {
     return () => window.removeEventListener('keydown', onKey)
   }, [panel, cerrar])
 
-  // Accesibilidad: al abrir el modal, mueve el foco al diálogo (el lector de
-  // pantalla anuncia el título y no se abre el teclado del móvil), atrapa el
-  // foco con Tab/Shift+Tab dentro del diálogo, y al cerrar lo devuelve al
-  // elemento que lo abrió.
+  // Accesibilidad: foco al diálogo + focus-trap + devolver foco al cerrar.
   useEffect(() => {
     if (!panel) return
     const node = dialogRef.current
     if (!node) return
     const previouslyFocused = document.activeElement
     node.focus()
-
     const onKeyDown = (e) => {
       if (e.key !== 'Tab') return
       const items = node.querySelectorAll(
@@ -85,28 +78,26 @@ function AppInner() {
         first.focus()
       }
     }
-
     node.addEventListener('keydown', onKeyDown)
     return () => {
       node.removeEventListener('keydown', onKeyDown)
-      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
-        previouslyFocused.focus()
-      }
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') previouslyFocused.focus()
     }
   }, [panel])
 
-  // "Ver en mapa": recentra y cierra el panel.
+  // "Ver en mapa": recentra, cambia a la vista Mapa y cierra el panel.
   const verEnMapa = useCallback(
     (item) => {
       if (item?.lat != null && item?.lng != null) {
         setMapTarget({ lat: item.lat, lng: item.lng, zoom: 17 })
       }
+      setVista('mapa')
       cerrar()
     },
     [cerrar],
   )
 
-  // Tras crear un reporte: recarga las capas, recentra si hay punto, y cierra.
+  // Tras crear un reporte: recarga, recentra (mapa) si hay punto, y cierra.
   const onSuccess = useCallback(
     (data) => {
       refresh?.()
@@ -119,61 +110,90 @@ function AppInner() {
   )
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
+    <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Encabezado */}
-      <header className="pt-safe absolute inset-x-0 top-0 z-[500] bg-red-700 text-white shadow-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
-          <div>
-            <h1 className="text-base font-bold leading-tight sm:text-lg">SOS La Guaira</h1>
-            <p className="text-[11px] leading-tight text-red-100">
-              Reunificación y rescate · Vargas, Venezuela
+      <header className="pt-safe z-[500] bg-red-700 text-white shadow-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2">
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-bold leading-tight sm:text-lg">SOS La Guaira</h1>
+            <p className="hidden text-[11px] leading-tight text-red-100 sm:block">
+              Directorio de desaparecidos · Vargas, Venezuela
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPanel('desaparecidos')}
-              className="min-h-[40px] rounded bg-white px-3 py-1 text-xs font-bold text-rose-700 hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-            >
-              Desaparecidos
-            </button>
-            <button
-              onClick={() => setPanel('rescate')}
-              className="min-h-[40px] rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-            >
-              Rescatistas
-            </button>
-          </div>
+          <button
+            onClick={() => setPanel('rescate')}
+            className="min-h-[40px] shrink-0 rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            Rescatistas
+          </button>
         </div>
       </header>
 
-      {/* Mapa de fondo + capas (Gio) */}
-      <div className="sos-map-shell absolute inset-0">
-        <MapBase target={mapTarget}>
-          <MapLayers />
-        </MapBase>
+      {/* Toggle de vista: Directorio | Mapa */}
+      <div role="group" aria-label="Vista" className="z-[500] flex border-b border-slate-200 bg-white shadow-sm">
+        <SegBtn activo={vista === 'directorio'} onClick={() => setVista('directorio')}>
+          Directorio
+        </SegBtn>
+        <SegBtn activo={vista === 'mapa'} onClick={() => setVista('mapa')}>
+          Mapa
+        </SegBtn>
       </div>
 
-      {/* Panel de capas (overlay), offset bajo el header para no taparlo */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 top-14 z-[600]">
-        <div className="pointer-events-auto">
-          <LayersPanel />
-        </div>
-      </div>
+      {/* Contenido */}
+      <main className="relative flex-1 overflow-hidden">
+        {vista === 'mapa' ? (
+          <>
+            {/* Mapa + capas (Gio) */}
+            <div className="sos-map-shell absolute inset-0">
+              <MapBase target={mapTarget}>
+                <MapLayers />
+              </MapBase>
+            </div>
 
-      {/* Barra de acciones inferior (mobile-first) */}
-      <nav
-        aria-label="Acciones principales"
-        className="pb-safe absolute inset-x-0 bottom-0 z-[500] bg-white/95 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] backdrop-blur"
-      >
-        <div className="mx-auto grid max-w-5xl grid-cols-4 gap-1 p-2">
-          <Boton onClick={() => setPanel('atrapado')} clase="bg-red-600 text-white" icono="🆘" texto="Atrapado" />
-          <Boton onClick={() => setPanel('reportar')} clase="bg-emerald-600 text-white" icono="🧑" texto="Reportar" />
-          <Boton onClick={() => setPanel('buscar')} clase="bg-amber-500 text-white" icono="🔎" texto="Buscar" />
-          <Boton onClick={() => setPanel('edificio')} clase="bg-violet-600 text-white" icono="🏚️" texto="Edificio" />
-        </div>
-      </nav>
+            {/* Panel de capas (overlay) */}
+            <div className="pointer-events-none absolute inset-0 z-[600]">
+              <div className="pointer-events-auto">
+                <LayersPanel />
+              </div>
+            </div>
 
-      {/* Panel deslizable */}
+            {/* Barra de acciones inferior */}
+            <nav
+              aria-label="Acciones principales"
+              className="pb-safe absolute inset-x-0 bottom-0 z-[500] bg-white/95 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] backdrop-blur"
+            >
+              <div className="mx-auto grid max-w-5xl grid-cols-4 gap-1 p-2">
+                <Boton onClick={() => setPanel('atrapado')} clase="bg-red-600 text-white" icono="🆘" texto="Atrapado" />
+                <Boton onClick={() => setPanel('reportar')} clase="bg-emerald-600 text-white" icono="🧑" texto="Reportar" />
+                <Boton onClick={() => setPanel('buscar')} clase="bg-amber-500 text-white" icono="🔎" texto="Buscar" />
+                <Boton onClick={() => setPanel('edificio')} clase="bg-violet-600 text-white" icono="🏚️" texto="Edificio" />
+              </div>
+            </nav>
+          </>
+        ) : (
+          /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
+          <div className="absolute inset-0 overflow-y-auto">
+            <GaleriaDesaparecidos />
+            <div className="pb-safe h-2" />
+          </div>
+        )}
+      </main>
+
+      {/* Botón flotante: reportar desaparecido (visible en el directorio) */}
+      {vista === 'directorio' && (
+        <button
+          onClick={() => {
+            setReportarTab('busco')
+            setPanel('reportar')
+          }}
+          className="pb-safe fixed bottom-4 right-4 z-[700] flex min-h-[52px] items-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white shadow-lg active:scale-95"
+        >
+          <span aria-hidden="true" className="text-lg">＋</span>
+          Reportar
+        </button>
+      )}
+
+      {/* Panel deslizable (overlay) */}
       {panel && (
         <div
           ref={dialogRef}
@@ -181,10 +201,10 @@ function AppInner() {
           aria-modal="true"
           aria-labelledby="sos-panel-titulo"
           tabIndex={-1}
-          className="absolute inset-0 z-[1000] flex items-end outline-none sm:items-center sm:justify-center"
+          className="fixed inset-0 z-[1000] flex items-end outline-none sm:items-center sm:justify-center"
         >
           <div className="sos-overlay-enter absolute inset-0 bg-black/40" onClick={cerrar} />
-          <div className={`sos-panel-enter pb-safe relative max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl bg-white sm:max-h-[85vh] sm:rounded-2xl ${panel === 'desaparecidos' ? 'sm:max-w-3xl' : 'sm:max-w-lg'}`}>
+          <div className="sos-panel-enter pb-safe relative max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl bg-white sm:max-h-[85vh] sm:rounded-2xl sm:w-[calc(100%-2rem)] sm:max-w-lg">
             <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 text-white ${PANELS[panel].color}`}>
               <h2 id="sos-panel-titulo" className="text-sm font-semibold">{PANELS[panel].titulo}</h2>
               <button
@@ -197,13 +217,9 @@ function AppInner() {
             </div>
 
             <div>
-              {/* RESCATE URGENTE */}
               {panel === 'atrapado' && <AtrapadoForm onSuccess={onSuccess} />}
-
-              {/* EDIFICIO */}
               {panel === 'edificio' && <EdificioForm onSuccess={onSuccess} />}
 
-              {/* REPORTAR PERSONA (busco / a salvo) */}
               {panel === 'reportar' && (
                 <div>
                   <div className="flex gap-2 border-b border-slate-100 p-3">
@@ -222,7 +238,6 @@ function AppInner() {
                 </div>
               )}
 
-              {/* BUSCAR -> MATCH */}
               {panel === 'buscar' &&
                 (persona ? (
                   <div>
@@ -238,7 +253,6 @@ function AppInner() {
                   <PersonSearch searchFn={listPersonas} onSelect={setPersona} />
                 ))}
 
-              {/* TRIAJE DE RESCATE */}
               {panel === 'rescate' && (
                 <RescueTriage
                   fetchAtrapados={listAtrapados}
@@ -252,6 +266,20 @@ function AppInner() {
         </div>
       )}
     </div>
+  )
+}
+
+function SegBtn({ activo, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={activo}
+      className={`flex-1 min-h-[44px] px-4 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rose-700 ${
+        activo ? 'bg-rose-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
 
