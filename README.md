@@ -71,24 +71,24 @@ Arquitectura objetivo:
    - El **seed** se corre una sola vez de forma manual: `railway run npm run seed`
      (NO ponerlo en el start para no duplicar datos).
 
-4. **PostgreSQL:** *New → Database → Add PostgreSQL*. Railway expone variables del plugin.
-   En el servicio backend define estas variables **referenciando el plugin** (no copies valores):
+4. **PostgreSQL:** *New → Database → Add PostgreSQL*. En el servicio backend define
+   estas variables **referenciando el plugin** (no copies valores):
 
    ```
-   DB_HOST=${{Postgres.PGHOST}}
-   DB_PORT=${{Postgres.PGPORT}}
-   DB_NAME=${{Postgres.PGDATABASE}}
-   DB_USER=${{Postgres.PGUSER}}
-   DB_PASS=${{Postgres.PGPASSWORD}}
+   DATABASE_URL=${{Postgres.DATABASE_URL}}
    CORS_ORIGIN=https://<DOMINIO-DEL-FRONTEND>
    MAX_UPLOAD_MB=5
    ```
 
    > `PORT` lo inyecta Railway automáticamente; `server.js` ya usa `process.env.PORT`.
-   > La conexión Postgres es por la **red privada de Railway → sin SSL**, compatible con
-   > `backend/db.js` tal cual. (Solo un Postgres externo tipo Neon/Supabase exigiría SSL.)
+   > `backend/db.js` usa `DATABASE_URL` con **SSL** en producción y cae a las variables
+   > `DB_*` en desarrollo local. Railway entrega `DATABASE_URL` lista para usar.
 
-5. **Frontend:**
+5. **Volume para fotos (obligatorio):** en el servicio backend, *Settings → Volumes →
+   añade un Volume montado en* `backend/uploads` (ruta `/app/uploads`). Sin esto, el FS
+   efímero de Railway borra las fotos en cada redeploy y se cae el feature de mostrarlas.
+
+6. **Frontend:**
    - *Root Directory:* `frontend`
    - *Build Command:* `npm install && npm run build` → genera `frontend/dist`
    - Servir `dist` como estático (Railway static site o Vercel).
@@ -98,15 +98,8 @@ Arquitectura objetivo:
      ```
      (origen del backend, **sin** `/api`). Si cambia, reconstruir el frontend.
 
-6. **Cerrar el círculo de CORS:** una vez conoces el dominio del frontend, ponlo en
+7. **Cerrar el círculo de CORS:** una vez conoces el dominio del frontend, ponlo en
    `CORS_ORIGIN` del backend y redepliega.
-
-### ⚠️ Persistencia de fotos (decisión pendiente)
-
-Las fotos subidas se guardan en `backend/uploads/`. El filesystem de Railway es **efímero**:
-en cada redeploy se borra. Para que las fotos sobrevivan hay que **montar un Railway Volume**
-en `backend/uploads` (o mover el almacenamiento a un bucket externo S3/R2). Recomendado para
-producción: Volume en `/app/uploads`. Las fotos de intel ya re-hosteadas se perderían sin esto.
 
 ---
 
