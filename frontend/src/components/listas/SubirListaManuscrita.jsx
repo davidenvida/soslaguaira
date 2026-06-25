@@ -11,10 +11,20 @@ import * as api from '../../api';
 const TIPOS = [
   { value: 'ingresados', label: 'Ingresados' },
   { value: 'trasladados', label: 'Trasladados' },
+  { value: 'heridos', label: 'Heridos' },
   { value: 'fallecidos', label: 'Fallecidos' },
   { value: 'refugiados', label: 'Refugiados' },
   { value: 'otro', label: 'Otro' },
 ];
+
+// Estado individual de cada persona en la lista (puede venir heredado del tipo).
+const ESTADO_LISTA = {
+  ingresado: 'bg-emerald-100 text-emerald-800',
+  trasladado: 'bg-sky-100 text-sky-800',
+  herido: 'bg-amber-100 text-amber-800',
+  fallecido: 'bg-slate-200 text-slate-700',
+  desconocido: 'bg-slate-100 text-slate-500',
+};
 
 // Normaliza data.personas a filas para la tabla. Cada persona trae un array
 // `coincidencias` (0/1/varias) contra la base; tomamos la mejor (mayor score):
@@ -29,6 +39,7 @@ const normalizarFilas = (res) => {
       nombre: p.nombre || p.nombre_completo || '—',
       cedula: p.cedula || '',
       estado: p.estado || '',
+      estadoHeredado: !!(p.estado_heredado ?? p.estadoHeredado),
       matchTipo,
       personaNombre: best?.nombre_completo || '',
       personaEstado: best?.estado || '',
@@ -103,6 +114,7 @@ export default function SubirListaManuscrita({ className = '' }) {
   const [descripcion, setDescripcion] = useState('');
   const [fase, setFase] = useState('form'); // form | enviando | resultado | error
   const [filas, setFilas] = useState([]);
+  const [tipoLista, setTipoLista] = useState('');
 
   const cerrar = () => {
     setAbierto(false);
@@ -110,6 +122,7 @@ export default function SubirListaManuscrita({ className = '' }) {
     setFoto(null);
     setDescripcion('');
     setFilas([]);
+    setTipoLista('');
   };
 
   const enviar = async (e) => {
@@ -126,6 +139,7 @@ export default function SubirListaManuscrita({ className = '' }) {
       fd.append('instrucciones', descripcion.trim());
       const res = await interpretar(fd);
       setFilas(normalizarFilas(res));
+      setTipoLista(res?.tipo_lista || res?.tipoLista || '');
       setFase('resultado');
     } catch {
       setFase('error');
@@ -151,6 +165,7 @@ export default function SubirListaManuscrita({ className = '' }) {
             <div>
               <p className="mb-3 text-xs text-slate-500">
                 {filas.length} {filas.length === 1 ? 'fila interpretada' : 'filas interpretadas'}.
+                {tipoLista && <span> Estado por defecto del tipo: <strong>{tipoLista}</strong>.</span>}
               </p>
               {filas.length === 0 ? (
                 <p className="text-sm text-slate-500">No se pudo extraer ninguna fila de la imagen.</p>
@@ -171,7 +186,18 @@ export default function SubirListaManuscrita({ className = '' }) {
                           <tr key={i} className="align-top">
                             <td className="py-2 pr-2 text-slate-800">
                               {f.nombre}
-                              {f.estado && <div className="text-[10px] text-slate-400">{f.estado}</div>}
+                              {f.estado && (
+                                <div className="mt-0.5">
+                                  <span
+                                    className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold ${ESTADO_LISTA[f.estado] || ESTADO_LISTA.desconocido}`}
+                                  >
+                                    {f.estado}
+                                  </span>
+                                  {f.estadoHeredado && (
+                                    <span className="ml-1 text-[9px] text-slate-400">según tipo</span>
+                                  )}
+                                </div>
+                              )}
                             </td>
                             <td className="py-2 pr-2 tabular-nums text-slate-600">{f.cedula || '—'}</td>
                             <td className="py-2">

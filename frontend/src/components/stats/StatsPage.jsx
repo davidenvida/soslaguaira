@@ -57,23 +57,33 @@ function Barras({ dias }) {
 }
 
 // Barras verticales de las 24 horas del día (0-23). Etiqueta cada 3 h.
+// El número de visitas se muestra sobre cada barra con datos (montado en la
+// punta de la barra, así horas consecutivas con distinta altura no chocan).
 function HoraBarras({ horas }) {
   const max = Math.max(1, ...horas.map((h) => h.value));
   return (
-    <div className="flex h-32 items-stretch gap-0.5" role="img" aria-label="Visitas por hora del día">
-      {horas.map((h, i) => (
-        <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          <div className="relative w-full flex-1" title={`${h.label}h: ${h.value}`}>
-            <div
-              className="absolute bottom-0 w-full rounded-t bg-violet-400"
-              style={{ height: `${Math.max(2, (h.value / max) * 100)}%` }}
-            />
+    <div className="flex h-36 items-stretch gap-0.5" role="img" aria-label="Visitas por hora del día">
+      {horas.map((h, i) => {
+        const pct = Math.max(2, (h.value / max) * 100);
+        return (
+          <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <div className="relative w-full flex-1" title={`${h.label}h: ${h.value} visitas`}>
+              {h.value > 0 && (
+                <span
+                  className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-bold leading-none text-violet-700"
+                  style={{ bottom: `calc(${pct}% + 2px)` }}
+                >
+                  {h.value}
+                </span>
+              )}
+              <div className="absolute bottom-0 w-full rounded-t bg-violet-400" style={{ height: `${pct}%` }} />
+            </div>
+            <span className="h-3 w-full whitespace-nowrap text-center text-[9px] leading-3 text-slate-400">
+              {i % 3 === 0 ? h.label : ''}
+            </span>
           </div>
-          <span className="h-3 w-full whitespace-nowrap text-center text-[9px] leading-3 text-slate-400">
-            {i % 3 === 0 ? h.label : ''}
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

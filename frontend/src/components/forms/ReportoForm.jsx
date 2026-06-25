@@ -4,6 +4,7 @@ import * as Yup from 'yup'
 import { TextInput, NumberInput, TextArea, SelectInput, SubmitButton, FormStatus } from './FormControls'
 import LocationPicker from './LocationPicker'
 import PhotoUpload from './PhotoUpload'
+import AlertaReunificacion from '../ui/AlertaReunificacion'
 import { createPersona, resolveFotoUrl } from './formApi'
 
 const ESTADOS = [
@@ -36,6 +37,7 @@ export default function ReportoForm({ onSuccess }) {
   const [coords, setCoords] = useState(null)
   const [foto, setFoto] = useState(null)
   const [coordError, setCoordError] = useState(false)
+  const [alertas, setAlertas] = useState(null)
 
   return (
     <div className="mx-auto w-full max-w-md px-3 sm:px-4">
@@ -46,6 +48,8 @@ export default function ReportoForm({ onSuccess }) {
           tranquilizar a sus familiares.
         </p>
       </header>
+
+      <AlertaReunificacion alertas={alertas} className="mb-4" />
 
       <Formik
         initialValues={{
@@ -63,6 +67,7 @@ export default function ReportoForm({ onSuccess }) {
         validationSchema={schema}
         onSubmit={async (values, { setStatus, resetForm }) => {
           setStatus(null)
+          setAlertas(null)
           if (!coords) {
             setCoordError(true)
             return
@@ -86,6 +91,7 @@ export default function ReportoForm({ onSuccess }) {
               foto_url,
             })
             setStatus({ type: 'ok', message: '¡Reporte enviado! Gracias por avisar.' })
+            setAlertas(data?.alertas || null)
             resetForm()
             setCoords(null)
             setFoto(null)
