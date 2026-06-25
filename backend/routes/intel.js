@@ -271,6 +271,37 @@ router.get('/personas/duplicados', async (req, res, next) => {
   }
 });
 
+// GET /api/intel/personas/stats  -> resumen para el directorio (solo no-duplicados).
+router.get('/personas/stats', async (req, res, next) => {
+  try {
+    const rows = (await query(
+      `SELECT estado, foto_url, lat, lng, sector_o_edificio, ultima_ubicacion, parroquia
+       FROM personas_intel WHERE duplicate_of IS NULL`
+    )).rows;
+
+    const gaz = (await query('SELECT nombre, parroquia, lat, lon FROM residencias')).rows;
+    const geocode = buildGeocoder(gaz);
+
+    // Shape estable: incluye los 6 estados aunque intel solo use 4 (los otros quedan en 0).
+    const por_estado = {
+      desaparecido: 0, a_salvo: 0, herido: 0, visto_con_vida: 0, fallecido: 0, atrapado: 0,
+    };
+    let con_foto = 0;
+    let geolocalizados = 0;
+
+    for (const r of rows) {
+      if (r.estado in por_estado) por_estado[r.estado] += 1;
+      if (r.foto_url) con_foto += 1;
+      const geocodable = (r.lat != null && r.lng != null) || geocode(r).lat != null;
+      if (geocodable) geolocalizados += 1;
+    }
+
+    return ok(res, { total: rows.length, por_estado, con_foto, geolocalizados }, 'Estadisticas del directorio.');
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/intel/personas/:id
 // Enriquece una fila existente: escribe foto_url y actualiza campos presentes
 // (ultima_ubicacion, parroquia, sector_o_edificio, descripcion, contacto, relacion, edad, estado),
