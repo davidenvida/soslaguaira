@@ -3,7 +3,7 @@ import { query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { writeLimiter } from '../middleware/rateLimit.js';
 import {
-  isNonEmptyString, oneOf, cleanStr, toIntOrNull, validCoords,
+  isNonEmptyString, oneOf, cleanStr, toIntOrNull, validCoords, normalizarCedula,
 } from '../utils/validate.js';
 import { matchScore } from '../utils/match.js';
 
@@ -28,8 +28,8 @@ router.post('/', writeLimiter, async (req, res, next) => {
 
     const sql = `
       INSERT INTO personas
-        (tipo, nombre, edad, descripcion, foto_url, estado, lat, lng, direccion, edificio, piso, contacto_nombre, contacto_telefono)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        (tipo, nombre, edad, descripcion, foto_url, estado, lat, lng, direccion, edificio, piso, contacto_nombre, contacto_telefono, cedula)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
       RETURNING *`;
     const params = [
       b.tipo,
@@ -45,6 +45,8 @@ router.post('/', writeLimiter, async (req, res, next) => {
       cleanStr(b.piso, 50),
       cleanStr(b.contacto_nombre, 120),
       cleanStr(b.contacto_telefono, 50),
+      // cedula opcional (solo digitos, llave para reunificacion); preferimos normalizada 6-8.
+      normalizarCedula(b.cedula) || (b.cedula ? cleanStr(String(b.cedula).replace(/\D/g, ''), 20) || null : null),
     ];
     const { rows } = await query(sql, params);
     return ok(res, rows[0], 'Persona registrada.', 201);

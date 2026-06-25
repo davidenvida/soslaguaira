@@ -11,12 +11,21 @@ const router = Router();
 // Imagen en memoria (no se persiste): se manda a GPT y se descarta.
 const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
-// Prompt base (Hugo afina el prompt/benchmark; se puede sobreescribir con body.instrucciones).
-const SYSTEM_PROMPT = `Eres un transcriptor de listas MANUSCRITAS de emergencia (ingresos a hospitales, fallecidos, heridos) tras un desastre en La Guaira, Venezuela.
-Transcribe EXACTAMENTE lo que ves, sin inventar ni completar nombres. Si algo es ilegible, marcalo en 'detalle'.
-Devuelve SOLO un JSON con esta forma exacta:
-{"personas":[{"nombre":"<nombre completo tal cual>","cedula":"<numero de cedula si aparece, solo digitos, si no vacio>","estado":"ingresado|fallecido|herido|desconocido","detalle":"<edad/notas/ilegible si aplica>","lugar":"<hospital o sector si aparece, si no vacio>"}]}
-Usa 'desconocido' para estado si la lista no lo indica. No agregues texto fuera del JSON.`;
+// Prompt v1.1 de Hugo (PROVISIONAL: validado 100% en extraccion, pendiente test de
+// caligrafia/estado con foto de lista a mano). Se puede sobreescribir con body.instrucciones.
+const SYSTEM_PROMPT = `Eres un transcriptor experto de listas manuscritas de emergencia (hospitales, refugios, albergues, morgues) tras el terremoto de La Guaira. Recibes la FOTO de una lista escrita a mano y devuelves SOLO un JSON valido con esta forma: {"personas":[{"nombre":"","cedula":"","estado":"ingresado|fallecido|herido|desconocido","detalle":"","lugar":""}]}
+REGLAS:
+1. Transcribe EXACTAMENTE lo escrito. NO inventes, NO completes nombres ni apellidos, NO adivines. Si solo hay nombre, pon solo el nombre.
+2. Una entrada por persona, en el ORDEN de la lista.
+3. estado: ingresado (ingreso/admitido/hospitalizado/vivo/estable/numero de cama o sala sin otra marca); fallecido (fallecido/muerto/occiso/obito, letra F, una cruz, o tachado con nota de deceso); herido (herido/lesionado/politraumatizado/quemado/letra H); desconocido (sin marca de estado o ilegible). NUNCA fuerces un estado que no se ve.
+4. nombre: si una palabra es ilegible, transcribe lo legible y agrega (ilegible); si TODO es ilegible, pon (ilegible) y estado=desconocido. Conserva la ortografia tal cual.
+5. cedula: numero de cedula si aparece (C.I., V-, E-, o solo digitos), transcrita tal cual; vacia si no hay. Es CLAVE para el cruce: extraela siempre que se vea.
+6. detalle: OTROS datos (edad, sexo, observaciones, hora, telefono, parentesco). NO repitas la cedula aqui. Vacio si no hay.
+7. lugar: cama/sala/piso/area/refugio/hospital/morgue si aparece (ej cama 12, sala B, Refugio Macuto). Vacio si no hay.
+8. TACHONES: si una linea esta tachada por completo (anulacion), OMITELA. Si el tachon es una correccion (re-escriben el nombre), transcribe la version final. Ante duda, incluye y anota 'posible tachon' en detalle.
+9. Encabezados, totales, firmas, fechas y notas que NO son personas: NO los incluyas.
+10. Si la imagen no es una lista de personas o esta vacia/ilegible: devuelve {"personas":[]}.
+11. Devuelve UNICAMENTE el JSON, sin texto adicional ni markdown.`;
 
 // Llama a GPT-4o con vision y devuelve el array de personas transcritas.
 async function interpretarConGPT(imageUrl, instrucciones) {
@@ -77,10 +86,14 @@ function extraerCedulas(text) {
 async function matchContraDirectorio(personas) {
   if (!personas.length) return personas;
   const dir = (await query(
-    'SELECT id, nombre_completo, estado, parroquia, descripcion, notas, contacto FROM personas_intel WHERE duplicate_of IS NULL'
+    'SELECT id, nombre_completo, estado, parroquia, cedula, descripcion, notas, contacto FROM personas_intel WHERE duplicate_of IS NULL'
   )).rows.map((r) => ({
     ...r,
-    cedulas: extraerCedulas(`${r.nombre_completo} ${r.descripcion || ''} ${r.notas || ''} ${r.contacto || ''}`),
+    // Llave principal: la columna cedula; mas las que aparezcan en el texto (fallback).
+    cedulas: [
+      ...(r.cedula ? [r.cedula] : []),
+      ...extraerCedulas(`${r.nombre_completo} ${r.descripcion || ''} ${r.notas || ''} ${r.contacto || ''}`),
+    ],
   }));
 
   return personas.map((p) => {

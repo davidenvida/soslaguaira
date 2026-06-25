@@ -3,7 +3,7 @@ import { pool, query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { intelLimiter } from '../middleware/rateLimit.js';
 import {
-  isNonEmptyString, oneOf, cleanStr, toIntOrNull, toNumberOrNull, normalizeName, validCoords,
+  isNonEmptyString, oneOf, cleanStr, toIntOrNull, toNumberOrNull, normalizeName, validCoords, normalizarCedula,
 } from '../utils/validate.js';
 import { buildGeocoder } from '../utils/geocode.js';
 
@@ -81,9 +81,10 @@ router.post('/personas', async (req, res, next) => {
       INSERT INTO personas_intel
         (nombre_completo, edad, estado, ultima_ubicacion, parroquia, sector_o_edificio,
          descripcion, foto_url, reportante, relacion, contacto, fuente_url, fecha_reporte, notas,
-         origen, lat, lng)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, COALESCE($13, now()), $14, $15, $16, $17)
+         origen, lat, lng, cedula)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, COALESCE($13, now()), $14, $15, $16, $17, $18)
       ON CONFLICT (nombre_completo, fuente_url) DO UPDATE SET
+        cedula            = COALESCE(EXCLUDED.cedula, personas_intel.cedula),
         edad              = COALESCE(EXCLUDED.edad, personas_intel.edad),
         estado            = COALESCE(EXCLUDED.estado, personas_intel.estado),
         ultima_ubicacion  = COALESCE(EXCLUDED.ultima_ubicacion, personas_intel.ultima_ubicacion),
@@ -123,6 +124,7 @@ router.post('/personas', async (req, res, next) => {
         it.origen === 'app' ? 'app' : 'osint',
         coords ? coords.lat : null,
         coords ? coords.lng : null,
+        normalizarCedula(it.cedula),
       ];
     };
 
@@ -332,6 +334,7 @@ router.patch('/personas/:id', async (req, res, next) => {
 
     // Campos enriquecibles (solo los presentes en el body).
     if (b.foto_url !== undefined) addSet('foto_url', cleanStr(b.foto_url, 500));
+    if (b.cedula !== undefined) addSet('cedula', normalizarCedula(b.cedula));
     // fuente_url PRIMARIO editable (corregir cruces de fuente). No puede quedar vacio.
     if (b.fuente_url !== undefined) {
       if (!isNonEmptyString(b.fuente_url)) return fail(res, "'fuente_url' no puede quedar vacio.");

@@ -32,6 +32,13 @@ export const toIntOrNull = (v) => {
   return n === null ? null : Math.trunc(n);
 };
 
+// Normaliza una cedula: solo digitos, valida 6-8 (cedula venezolana). null si no aplica.
+export const normalizarCedula = (v) => {
+  if (v === undefined || v === null) return null;
+  const d = String(v).replace(/\D/g, '');
+  return d.length >= 6 && d.length <= 8 ? d : null;
+};
+
 // Valida un par lat/lng. Devuelve {lat, lng} o null si invalido/ausente.
 export const validCoords = (lat, lng) => {
   const la = toNumberOrNull(lat);
