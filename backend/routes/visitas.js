@@ -25,7 +25,7 @@ const ipCliente = (req) => {
 
 // Resuelve region/ciudad/operadora via ip-api.com (gratis, 45/min) con cache. Best-effort.
 async function resolverGeo(ip) {
-  const vacio = { region: null, ciudad: null, operadora: null };
+  const vacio = { pais: null, region: null, ciudad: null, operadora: null };
   if (esIpPrivada(ip)) return vacio;
   if (ipCache.has(ip)) return ipCache.get(ip);
 
@@ -34,13 +34,14 @@ async function resolverGeo(ip) {
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 2000);
     const r = await fetch(
-      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,regionName,city,isp,org`,
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,countryCode,regionName,city,isp,org`,
       { signal: ctrl.signal }
     );
     clearTimeout(to);
     const d = await r.json();
     if (d.status === 'success') {
       result = {
+        pais: cleanStr(d.countryCode, 8),
         region: cleanStr(d.regionName, 120),
         ciudad: cleanStr(d.city, 120),
         operadora: cleanStr(d.isp || d.org, 160),
@@ -74,10 +75,12 @@ const parseUA = (ua = '') => {
 // Registro best-effort (corre DESPUES de responder 204; nunca afecta al cliente).
 async function registrarVisita(req) {
   const b = req.body || {};
-  let pais = req.get('cf-ipcountry') || null;
-  if (pais) pais = cleanStr(pais, 8);
+  // pais: preferimos CF-IPCountry (si Cloudflare lo manda y no es 'XX'); si no, el de geo-IP.
+  let paisCf = req.get('cf-ipcountry') || null;
+  if (paisCf === 'XX' || paisCf === 'T1') paisCf = null; // valores 'desconocido' de Cloudflare
   const { dispositivo, navegador } = parseUA(req.get('user-agent'));
-  const { region, ciudad, operadora } = await resolverGeo(ipCliente(req));
+  const { pais: paisGeo, region, ciudad, operadora } = await resolverGeo(ipCliente(req));
+  const pais = (paisCf && cleanStr(paisCf, 8)) || paisGeo;
 
   await query(
     `INSERT INTO visitas (path, pais, referer, region, ciudad, operadora, dispositivo, navegador)
