@@ -38,7 +38,7 @@ const flagIntel = (id, payload) =>
 
 function Placeholder() {
   return (
-    <div className="flex h-44 w-full items-center justify-center bg-slate-100 text-slate-300">
+    <div className="flex aspect-[4/5] w-full items-center justify-center bg-slate-100 text-slate-300">
       <svg width="56" height="56" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5.33 0-8 2.67-8 6v2h16v-2c0-3.33-2.67-6-8-6Z" />
       </svg>
@@ -114,8 +114,9 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
           }}
           role="button"
           tabIndex={0}
+          aria-label={`Ampliar foto de ${nom}`}
           title="Ampliar foto"
-          className="h-44 w-full cursor-zoom-in bg-slate-100 object-cover"
+          className="aspect-[4/5] w-full cursor-zoom-in bg-slate-100 object-cover object-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
         />
       ) : (
         <Placeholder />

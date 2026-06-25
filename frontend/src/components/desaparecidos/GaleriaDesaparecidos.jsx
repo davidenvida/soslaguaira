@@ -146,7 +146,7 @@ export default function GaleriaDesaparecidos() {
         </p>
       </header>
 
-      <EstadisticasDirectorio items={visibles} />
+      <EstadisticasDirectorio items={visibles} estado={estado} onEstado={setEstado} />
 
       {/* Controles */}
       <div role="search" aria-label="Buscar y filtrar desaparecidos" className="sticky top-0 z-10 -mx-3 mb-4 flex flex-col gap-2 bg-slate-50/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:flex-row sm:px-4">
