@@ -347,7 +347,15 @@ router.patch('/personas/:id', async (req, res, next) => {
     if (b.estado !== undefined) {
       if (!oneOf(b.estado, ESTADOS_INTEL)) return fail(res, `'estado' invalido (${ESTADOS_INTEL.join('|')}).`);
       addSet('estado', b.estado);
+      // Revertir a busqueda: sella revertido_at y conserva los confirmado_* como historial.
+      if (b.estado === 'desaparecido') sets.push('revertido_at = now()');
     }
+    // Auditoria de quien confirma el 'a salvo' (responsabilidad: detiene la busqueda).
+    if (b.confirmado_por !== undefined) {
+      addSet('confirmado_por', cleanStr(b.confirmado_por, 200));
+      sets.push('confirmado_at = now()');
+    }
+    if (b.confirmado_contacto !== undefined) addSet('confirmado_contacto', cleanStr(b.confirmado_contacto, 200));
     // 'nota' se ANEXA a notas (no pisa), para dejar rastro de la correccion (trazabilidad).
     if (isNonEmptyString(b.nota)) {
       params.push(cleanStr(b.nota, 2000));
