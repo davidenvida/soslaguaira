@@ -131,16 +131,16 @@ export default function SubirListaManuscrita({ className = '' }) {
 
   const enviar = async (e) => {
     e.preventDefault();
-    if (!foto || fase === 'enviando') return;
+    if (!foto || !fuente.trim() || fase === 'enviando') return;
     setFase('enviando');
     try {
       const fd = new FormData();
       fd.append('foto', foto);
       fd.append('tipo', tipo);
-      // El backend usa 'instrucciones' para guiar la interpretación; mandamos
-      // ahí la descripción/fuente (y también como 'descripcion' por compatibilidad).
-      fd.append('descripcion', descripcion.trim());
-      fd.append('instrucciones', descripcion.trim());
+      // Fuente/hospital de la lista (sin esto la lista entra huérfana). Se manda
+      // como 'fuente' y también como contexto en 'instrucciones' para la IA.
+      fd.append('fuente', fuente.trim());
+      fd.append('instrucciones', `Lista de ${tipo} del hospital/fuente: ${fuente.trim()}`);
       const res = await interpretar(fd);
       setFilas(normalizarFilas(res));
       setTipoLista(res?.tipo_lista || res?.tipoLista || '');
@@ -251,15 +251,18 @@ export default function SubirListaManuscrita({ className = '' }) {
                   ))}
                 </div>
               </div>
+              {/* Fuente / hospital: OBLIGATORIO (sin esto la lista queda huérfana). */}
               <div>
-                <label htmlFor="lista-desc" className="mb-1 block text-xs font-semibold text-slate-600">Descripción / fuente</label>
-                <textarea
-                  id="lista-desc"
-                  rows={2}
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Ej: refugio Escuela Bolívar, entregada por la Cruz Roja…"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                <label htmlFor="lista-fuente" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  3. ¿De qué hospital o fuente es esta lista?
+                </label>
+                <input
+                  id="lista-fuente"
+                  type="text"
+                  value={fuente}
+                  onChange={(e) => setFuente(e.target.value)}
+                  placeholder="Ej: Hospital Pérez Carreño, refugio Escuela Bolívar…"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
               {fase === 'error' && (
@@ -267,11 +270,14 @@ export default function SubirListaManuscrita({ className = '' }) {
               )}
               <button
                 type="submit"
-                disabled={!foto || fase === 'enviando'}
-                className="min-h-[44px] w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                disabled={!foto || !fuente.trim() || fase === 'enviando'}
+                className="min-h-[48px] w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
               >
                 {fase === 'enviando' ? 'Interpretando…' : 'Interpretar lista'}
               </button>
+              {!foto || !fuente.trim() ? (
+                <p className="text-center text-[11px] text-slate-400">Agrega la foto y el hospital/fuente para continuar.</p>
+              ) : null}
             </form>
           )}
         </Modal>

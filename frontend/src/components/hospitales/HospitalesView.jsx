@@ -4,8 +4,13 @@
 // sin coincidencia). Botones de hospital arriba (Todos + cada uno) que filtran la
 // lista; el buscador filtra DENTRO de la lista por nombre o cédula. Pública.
 import { useEffect, useMemo, useState } from 'react';
-import http from '../../api';
+import http, { fotoUrl as toBackendUrl } from '../../api';
 import PersonaDetalle from '../desaparecidos/PersonaDetalle';
+import Lightbox from '../ui/Lightbox';
+
+// Nombre de la lista específica (fuente) y la imagen del cartel original.
+const listaNombre = (p) => p?.lista?.fuente || p?.lista_fuente || p?.fuente || '';
+const listaFoto = (p) => toBackendUrl(p?.lista?.foto_url || p?.lista_foto_url || p?.foto_url || '');
 
 const unwrap = (r) => r.data?.data ?? r.data;
 
@@ -36,6 +41,7 @@ export default function HospitalesView({ coincInicial }) {
   const [coincFiltro, setCoincFiltro] = useState(() => (coincInicial === 'con' ? 'con' : 'todas')); // todas | con | sin
   const [detalle, setDetalle] = useState(null); // reporte abierto (PersonaDetalle)
   const [cargandoReporte, setCargandoReporte] = useState(false);
+  const [imgLista, setImgLista] = useState(null); // imagen del cartel de la lista (Lightbox)
 
   useEffect(() => {
     let vivo = true;
@@ -107,28 +113,36 @@ export default function HospitalesView({ coincInicial }) {
         Personas ingresadas, trasladadas o heridas reportadas por los hospitales. Verde = coincide con un reporte del directorio.
       </p>
 
-      {/* Buscador dentro de la lista + filtro de coincidencia */}
-      <div className="mb-3 flex gap-2">
-        <label htmlFor="hosp-q" className="sr-only">Buscar por nombre o cédula</label>
-        <input
-          id="hosp-q"
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por nombre o cédula…"
-          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-        />
-        <label htmlFor="hosp-coinc" className="sr-only">Filtrar por coincidencia</label>
-        <select
-          id="hosp-coinc"
-          value={coincFiltro}
-          onChange={(e) => setCoincFiltro(e.target.value)}
-          className="shrink-0 rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-        >
-          <option value="todas">Todas</option>
-          <option value="con">Con coincidencia</option>
-          <option value="sin">Sin coincidencia</option>
-        </select>
+      {/* Buscador dentro de la lista */}
+      <label htmlFor="hosp-q" className="sr-only">Buscar por nombre o cédula</label>
+      <input
+        id="hosp-q"
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Buscar por nombre o cédula…"
+        className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+      />
+
+      {/* Filtro de coincidencia: botones (no dropdown). */}
+      <div role="group" aria-label="Filtrar por coincidencia" className="mb-3 flex gap-2">
+        {[
+          { v: 'todas', label: 'Todas' },
+          { v: 'con', label: 'Con coincidencia' },
+          { v: 'sin', label: 'Sin coincidencia' },
+        ].map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => setCoincFiltro(o.v)}
+            aria-pressed={coincFiltro === o.v}
+            className={`min-h-[36px] flex-1 rounded-full px-3 text-xs font-semibold ring-1 transition sm:flex-none ${
+              coincFiltro === o.v ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
       </div>
 
       {/* Aviso: los matches son por NOMBRE (candidatos), no confirmados. */}
@@ -152,6 +166,7 @@ export default function HospitalesView({ coincInicial }) {
                 <th className="px-3 py-2 font-semibold">Nombre</th>
                 <th className="px-3 py-2 font-semibold">Cédula</th>
                 <th className="px-3 py-2 font-semibold">Hospital</th>
+                <th className="px-3 py-2 font-semibold">Lista</th>
                 <th className="px-3 py-2 font-semibold">Coincidencia</th>
               </tr>
             </thead>
@@ -180,6 +195,23 @@ export default function HospitalesView({ coincInicial }) {
                     <td className="px-3 py-2 font-medium text-slate-900">{p.nombre || '—'}</td>
                     <td className="px-3 py-2 tabular-nums text-slate-600">{p.cedula || '—'}</td>
                     <td className="px-3 py-2 text-slate-600">{p.hospital || '—'}</td>
+                    <td className="px-3 py-2 text-slate-600">
+                      <div className="min-w-0">
+                        <span className="block truncate">{listaNombre(p) || '—'}</span>
+                        {listaFoto(p) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImgLista(listaFoto(p));
+                            }}
+                            className="mt-0.5 text-[11px] font-semibold text-indigo-600 hover:underline"
+                          >
+                            Ver imagen
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2">
                       {clickable ? (
                         <span className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
@@ -200,6 +232,7 @@ export default function HospitalesView({ coincInicial }) {
       </div>
 
       {detalle && <PersonaDetalle persona={detalle} onClose={() => setDetalle(null)} />}
+      {imgLista && <Lightbox src={imgLista} alt="Imagen original de la lista" caption="Lista original" onClose={() => setImgLista(null)} />}
     </section>
   );
 }
