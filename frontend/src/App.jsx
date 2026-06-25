@@ -6,6 +6,7 @@ import PersonSearch from './components/search/PersonSearch'
 import MatchView from './components/search/MatchView'
 import RescueTriage from './components/rescue/RescueTriage'
 import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecidos'
+import { ESTADO_LABEL } from './components/desaparecidos/estados'
 import HospitalesView from './components/hospitales/HospitalesView'
 import BuzonSugerencias from './components/ui/BuzonSugerencias'
 import StatsPage from './components/stats/StatsPage'
@@ -23,6 +24,12 @@ import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelP
 // Los paneles (reportar/buscar/atrapado/edificio/rescate) son overlays
 // accesibles desde ambas vistas. a11y/responsive: Fiona.
 // ============================================================================
+
+// Parroquias de La Guaira/Vargas para el filtro del header.
+const PARROQUIAS = [
+  'Caraballeda', 'Carayaca', 'Carlos Soublette', 'Catia La Mar', 'El Junko',
+  'La Guaira', 'Macuto', 'Maiquetía', 'Naiguatá', 'Urimare',
+]
 
 const PANELS = {
   buscar: { titulo: 'Buscar a una persona', color: 'bg-amber-500' },
@@ -60,6 +67,10 @@ function AppInner({ setDestacarId }) {
   const [mapTarget, setMapTarget] = useState(null) // recentra el mapa al "Ver en mapa"
   const [persona, setPersona] = useState(null) // resultado elegido en buscador -> match
   const [reportarTab, setReportarTab] = useState('busco') // busco | salvo
+  // Buscador + filtros en el header (controlan la galería / búsqueda unificada).
+  const [q, setQ] = useState('')
+  const [estadoFiltro, setEstadoFiltro] = useState('')
+  const [parroquiaFiltro, setParroquiaFiltro] = useState('')
   const { refresh } = useMapData()
   const dialogRef = useRef(null)
 
@@ -154,46 +165,91 @@ function AppInner({ setDestacarId }) {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      {/* Encabezado */}
+      {/* Encabezado: título | separador | buscador + filtros (estado/parroquia a la derecha) */}
       <header className="pt-safe z-[500] bg-red-700 text-white shadow-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2">
-          <div className="min-w-0">
-            <h1 className="truncate text-base font-bold leading-tight sm:text-lg">SOS La Guaira</h1>
-            <p className="hidden text-[11px] leading-tight text-red-100 sm:block">
-              Directorio de desaparecidos · Vargas, Venezuela
-            </p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-3 py-2 lg:flex-row lg:items-center">
+          {/* Título + Rescatistas */}
+          <div className="flex items-center justify-between gap-2 lg:shrink-0">
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-bold leading-tight sm:text-lg">SOS La Guaira</h1>
+              <p className="truncate text-[11px] leading-tight text-red-100">
+                Directorio de desaparecidos · Vargas, Venezuela
+              </p>
+            </div>
+            <button
+              onClick={() => setPanel('rescate')}
+              className="min-h-[40px] shrink-0 rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white lg:hidden"
+            >
+              Rescatistas
+            </button>
           </div>
+
+          {/* Separador visual entre título y buscador */}
+          <div aria-hidden="true" className="hidden w-px self-stretch bg-white/25 lg:block" />
+
+          {/* Buscador (grande) + filtros estado/parroquia a la derecha */}
+          <div role="search" aria-label="Buscar desaparecidos" className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="hero-q" className="sr-only">Busca a tu familiar por nombre o cédula</label>
+              <input
+                id="hero-q"
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Busca a tu familiar por nombre o cédula…"
+                className="w-full rounded-lg border border-white/30 bg-white px-3 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
+              />
+            </div>
+            <div className="flex gap-2 sm:shrink-0">
+              <label htmlFor="hero-estado" className="sr-only">Filtrar por estado</label>
+              <select
+                id="hero-estado"
+                value={estadoFiltro}
+                onChange={(e) => setEstadoFiltro(e.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-white/30 bg-white px-2 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-white sm:flex-none"
+              >
+                <option value="">Estado</option>
+                {Object.entries(ESTADO_LABEL)
+                  .filter(([k]) => k !== 'fallecido')
+                  .map(([k, label]) => (
+                    <option key={k} value={k}>{label}</option>
+                  ))}
+              </select>
+              <label htmlFor="hero-parroquia" className="sr-only">Filtrar por parroquia</label>
+              <select
+                id="hero-parroquia"
+                value={parroquiaFiltro}
+                onChange={(e) => setParroquiaFiltro(e.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-white/30 bg-white px-2 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-white sm:flex-none"
+              >
+                <option value="">Parroquia</option>
+                {PARROQUIAS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <button
             onClick={() => setPanel('rescate')}
-            className="min-h-[40px] shrink-0 rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="hidden min-h-[40px] shrink-0 rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white lg:block"
           >
             Rescatistas
           </button>
         </div>
       </header>
 
-      {/* Banda compacta: toggle (iconos) pegado a la izquierda + mensaje de valor */}
-      <div className="z-[500] flex items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 py-1.5">
-        <div role="group" aria-label="Vista" className="flex shrink-0 select-none gap-1">
-          <IconSegBtn activo={vista === 'directorio'} onClick={() => setVista('directorio')} label="Vista directorio">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
-              <path d="M4 5h2v2H4zm4 0h12v2H8zM4 11h2v2H4zm4 0h12v2H8zM4 17h2v2H4zm4 0h12v2H8z" />
-            </svg>
-          </IconSegBtn>
-          <IconSegBtn activo={vista === 'mapa'} onClick={() => setVista('mapa')} label="Vista mapa">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
-              <path d="M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
-            </svg>
-          </IconSegBtn>
-          <IconSegBtn activo={vista === 'hospitales'} onClick={() => setVista('hospitales')} label="Vista hospitales">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
-              <path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z" />
-            </svg>
-          </IconSegBtn>
-        </div>
-        <p className="line-clamp-2 min-w-0 flex-1 text-[11px] leading-tight text-slate-600 sm:text-xs">
-          <span className="font-bold text-indigo-700">Reporta y en segundos</span> cruzamos tu reporte con cientos de pacientes ingresados en hospitales.
-        </p>
+      {/* Línea debajo del header: los 3 botones de vista, grandes y vistosos */}
+      <div role="group" aria-label="Vista" className="z-[500] mx-auto flex w-full max-w-6xl gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+        <VistaBtn activo={vista === 'directorio'} onClick={() => setVista('directorio')} label="Reportes">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M4 5h2v2H4zm4 0h12v2H8zM4 11h2v2H4zm4 0h12v2H8zM4 17h2v2H4zm4 0h12v2H8z" /></svg>
+        </VistaBtn>
+        <VistaBtn activo={vista === 'mapa'} onClick={() => setVista('mapa')} label="Mapa">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" /></svg>
+        </VistaBtn>
+        <VistaBtn activo={vista === 'hospitales'} onClick={() => setVista('hospitales')} label="Hospitales">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z" /></svg>
+        </VistaBtn>
       </div>
 
       {/* Banda de acción en UNA fila: Ver listas (izq) + Subir lista + explicación */}
@@ -241,7 +297,15 @@ function AppInner({ setDestacarId }) {
         ) : (
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
           <div className="absolute inset-0 overflow-y-auto">
-            <GaleriaDesaparecidos onVerEnMapa={verEnMapa} />
+            <GaleriaDesaparecidos
+              onVerEnMapa={verEnMapa}
+              q={q}
+              setQ={setQ}
+              estado={estadoFiltro}
+              setEstado={setEstadoFiltro}
+              parroquia={parroquiaFiltro}
+              setParroquia={setParroquiaFiltro}
+            />
             <BuzonSugerencias className="mx-auto mt-2 w-full max-w-xl px-4 pb-4" />
             <footer className="px-4 pb-6 text-center text-[11px] leading-relaxed text-slate-400">
               <p>
@@ -369,19 +433,18 @@ function SegBtn({ activo, onClick, children }) {
   )
 }
 
-// Botón de vista icon-only (toggle compacto). Mantiene aria-pressed + aria-label.
-function IconSegBtn({ activo, onClick, label, children }) {
+// Botón de vista grande y vistoso (Reportes / Mapa / Hospitales): icono + label.
+function VistaBtn({ activo, onClick, label, children }) {
   return (
     <button
       onClick={onClick}
       aria-pressed={activo}
-      aria-label={label}
-      title={label}
-      className={`flex h-10 w-11 items-center justify-center rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
-        activo ? 'bg-slate-900 text-white shadow' : 'bg-white text-slate-500 ring-1 ring-slate-300 hover:bg-slate-50'
+      className={`flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+        activo ? 'bg-slate-900 text-white shadow' : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
       }`}
     >
-      {children}
+      <span aria-hidden="true">{children}</span>
+      <span>{label}</span>
     </button>
   )
 }

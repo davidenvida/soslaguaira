@@ -45,10 +45,27 @@ const matchLocal = (p, { q, estado, parroquia }) => {
   return true;
 };
 
-export default function GaleriaDesaparecidos({ onVerEnMapa }) {
-  const [q, setQ] = useState('');
-  const [estado, setEstado] = useState('');
-  const [parroquia, setParroquia] = useState('');
+export default function GaleriaDesaparecidos({
+  onVerEnMapa,
+  q: qProp,
+  setQ: setQProp,
+  estado: estadoProp,
+  setEstado: setEstadoProp,
+  parroquia: parroquiaProp,
+  setParroquia: setParroquiaProp,
+}) {
+  // Búsqueda y filtros pueden venir controlados desde el header (shell). Si no,
+  // se usan los internos y se muestra la barra de controles propia.
+  const controlado = qProp !== undefined;
+  const [qI, setQI] = useState('');
+  const [estadoI, setEstadoI] = useState('');
+  const [parroquiaI, setParroquiaI] = useState('');
+  const q = controlado ? qProp : qI;
+  const setQ = controlado ? setQProp : setQI;
+  const estado = controlado ? estadoProp : estadoI;
+  const setEstado = controlado ? setEstadoProp : setEstadoI;
+  const parroquia = controlado ? parroquiaProp : parroquiaI;
+  const setParroquia = controlado ? setParroquiaProp : setParroquiaI;
   const qDebounced = useDebounce(q, 350);
 
   const [items, setItems] = useState([]);
@@ -187,7 +204,8 @@ export default function GaleriaDesaparecidos({ onVerEnMapa }) {
 
       <EstadisticasDirectorio items={visibles} estado={estado} onEstado={aplicarFiltroStat} />
 
-      {/* Controles */}
+      {/* Controles (solo si NO viene controlado por el header del shell). */}
+      {!controlado && (
       <div role="search" aria-label="Buscar y filtrar desaparecidos" className="sticky top-0 z-10 -mx-3 mb-4 flex flex-col gap-2 bg-slate-50/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:flex-row sm:px-4">
         <div className="flex-1">
           <label htmlFor="desap-q" className="sr-only">Buscar por nombre</label>
@@ -234,6 +252,7 @@ export default function GaleriaDesaparecidos({ onVerEnMapa }) {
           </div>
         </div>
       </div>
+      )}
 
       {enBusqueda ? (
         // Búsqueda unificada: reportes del directorio + coincidencias en hospitales.
