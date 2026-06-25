@@ -171,7 +171,7 @@ export default function HospitalesView({ coincInicial }) {
 
         {/* MÓVIL: cada paciente como card (prioridad: nombre, cédula, coincidencia). */}
         {status === 'ready' && filtradas.length > 0 && (
-          <ul className="divide-y divide-slate-100 sm:hidden">
+          <ul className="divide-y divide-slate-100 md:hidden">
             {filtradas.map((p, i) => {
               const key = p.id ?? `${p.cedula}-${i}`;
               const clickable = coincide(p);
@@ -197,7 +197,7 @@ export default function HospitalesView({ coincInicial }) {
                       aria-expanded={open}
                       aria-controls={`hd-${key}`}
                       aria-label="Ver hospital y lista"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
                     >
                       <svg className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M7 10l5 5 5-5z" />
@@ -224,7 +224,7 @@ export default function HospitalesView({ coincInicial }) {
 
         {/* DESKTOP: tabla completa. */}
         {status === 'ready' && filtradas.length > 0 && (
-          <table className="hidden w-full text-left text-sm sm:table">
+          <table className="hidden w-full text-left text-sm md:table">
             <thead className="sticky top-0 bg-slate-50 text-slate-500">
               <tr>
                 <th className="px-3 py-2 font-semibold">Nombre</th>
