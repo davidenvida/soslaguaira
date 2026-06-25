@@ -223,7 +223,7 @@ router.get('/personas', async (req, res, next) => {
     const limRaw = toIntOrNull(req.query.limit);
     const offRaw = toIntOrNull(req.query.offset);
     const pageRaw = toIntOrNull(req.query.page);
-    const limit = limRaw === null ? 60 : Math.min(Math.max(limRaw, 1), 500);
+    const limit = limRaw === null ? 60 : Math.min(Math.max(limRaw, 1), 2000); // cap alto: leer "toda la base" en 1 call
     let offset;
     if (offRaw !== null) offset = Math.max(offRaw, 0);
     else if (pageRaw !== null) offset = Math.max(pageRaw - 1, 0) * limit;
@@ -393,7 +393,9 @@ router.patch('/personas/:id', async (req, res, next) => {
       sets.push('confirmado_at = now()');
     }
     if (b.confirmado_contacto !== undefined) addSet('confirmado_contacto', cleanStr(b.confirmado_contacto, 200));
-    // 'nota' se ANEXA a notas (no pisa), para dejar rastro de la correccion (trazabilidad).
+    // 'notas' (plural) SOBRESCRIBE el campo (correccion/reconciliacion).
+    if (b.notas !== undefined) addSet('notas', cleanStr(b.notas, 2000));
+    // 'nota' (singular) ANEXA a notas (no pisa), para dejar rastro de la correccion (trazabilidad).
     if (isNonEmptyString(b.nota)) {
       params.push(cleanStr(b.nota, 2000));
       sets.push(`notas = concat_ws(E'\\n', notas, $${params.length}::text)`);
