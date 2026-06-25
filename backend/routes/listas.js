@@ -377,6 +377,47 @@ router.get('/:id', adminGate, async (req, res, next) => {
   }
 });
 
+// POST /api/listas/:id/acceso  { nombre, telefono } -> PUBLICO. Gate para ver la imagen:
+// registra el acceso (evidencia de que un familiar la consulto) y devuelve el foto_url.
+// Solo listas no sensibles (no fallecidos).
+router.post('/:id/acceso', writeLimiter, async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const b = req.body || {};
+    if (!isNonEmptyString(b.nombre)) return fail(res, 'nombre es obligatorio.');
+    if (!isNonEmptyString(b.telefono)) return fail(res, 'telefono es obligatorio.');
+
+    const lista = (await query(`SELECT id, foto_url FROM listas_manuscritas WHERE id = $1 AND ${SQL_TIPO_PUBLICO}`, [id])).rows[0];
+    if (!lista) return fail(res, 'Lista no disponible.', 404);
+
+    let pais = req.get('cf-ipcountry') || null;
+    if (pais) pais = cleanStr(pais, 8);
+    await query(
+      'INSERT INTO accesos_lista (lista_id, nombre, telefono, pais) VALUES ($1,$2,$3,$4)',
+      [id, cleanStr(b.nombre, 160), cleanStr(b.telefono, 40), pais]
+    );
+    return ok(res, { foto_url: lista.foto_url }, 'Acceso registrado.', 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/listas/:id/accesos -> quien accedio a la imagen de esta lista (admin).
+router.get('/:id/accesos', adminGate, async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const { rows } = await query(
+      'SELECT id, nombre, telefono, pais, created_at FROM accesos_lista WHERE lista_id = $1 ORDER BY created_at DESC, id DESC',
+      [id]
+    );
+    return ok(res, rows, 'Accesos a la lista.');
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/listas/:id  -> actualiza fuente/tipo/descripcion (admin). Normaliza nombres de
 // hospital sin re-subir la lista. La coincidencia/filtro publico dependen de tipo, asi que
 // corregir fuente unifica el dropdown de hospitales.

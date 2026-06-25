@@ -46,7 +46,8 @@ router.get('/personas', async (req, res, next) => {
 
     // Indice de desaparecidos/desconocidos reportados (se carga 1 vez por request).
     const desap = (await query(
-      `SELECT id, nombre_completo, cedula, estado FROM personas_intel
+      `SELECT id, nombre_completo, cedula, estado, informado_familia, informado_via, informado_at
+       FROM personas_intel
        WHERE duplicate_of IS NULL AND estado IN ('desaparecido','desconocido')`
     )).rows;
     const porCedula = new Map();
@@ -59,7 +60,13 @@ router.get('/personas', async (req, res, next) => {
         nombre: r.nombre, cedula: r.cedula, hospital: r.hospital, estado: r.estado, lugar: r.lugar,
         lista_id: r.lista_id, lista_fuente: r.hospital, lista_foto_url: r.lista_foto_url,
         coincidencia: rep
-          ? { hay: true, reporte: { id: rep.id, nombre_completo: rep.nombre_completo, estado: rep.estado } }
+          ? {
+              hay: true,
+              reporte: {
+                id: rep.id, nombre_completo: rep.nombre_completo, estado: rep.estado,
+                informado_familia: rep.informado_familia, informado_via: rep.informado_via, informado_at: rep.informado_at,
+              },
+            }
           : { hay: false, reporte: null },
       };
     };

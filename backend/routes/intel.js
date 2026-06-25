@@ -16,6 +16,7 @@ router.use(intelLimiter);
 
 const ESTADOS_INTEL = ['desaparecido', 'a_salvo', 'fallecido', 'atrapado'];
 const ORIGENES = ['osint', 'app'];
+const INFORMADO_VIAS = ['telefono', 'publicacion'];
 const TIPOS_RESIDENCIA = ['urbanizacion', 'edificio', 'sector'];
 
 // Acepta un objeto suelto, un array, o { items: [...] }.
@@ -416,6 +417,18 @@ router.patch('/personas/:id', async (req, res, next) => {
       sets.push('confirmado_at = now()');
     }
     if (b.confirmado_contacto !== undefined) addSet('confirmado_contacto', cleanStr(b.confirmado_contacto, 200));
+    // Tracking de aviso a la familia (reunificacion).
+    if (b.informado_via !== undefined) {
+      if (b.informado_via !== null && !oneOf(b.informado_via, INFORMADO_VIAS)) {
+        return fail(res, `'informado_via' invalido (${INFORMADO_VIAS.join('|')}).`);
+      }
+      addSet('informado_via', b.informado_via);
+    }
+    if (b.informado_familia !== undefined) {
+      const inf = b.informado_familia === true || b.informado_familia === 'true';
+      addSet('informado_familia', inf);
+      sets.push(inf ? 'informado_at = now()' : 'informado_at = NULL'); // sello al informar, limpia al desmarcar
+    }
     // 'notas' (plural) SOBRESCRIBE el campo (correccion/reconciliacion).
     if (b.notas !== undefined) addSet('notas', cleanStr(b.notas, 2000));
     // 'nota' (singular) ANEXA a notas (no pisa), para dejar rastro de la correccion (trazabilidad).
