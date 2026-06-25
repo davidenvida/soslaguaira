@@ -28,7 +28,7 @@ function FotoChica({ src, alt }) {
   );
 }
 
-export default function ClusterModal({ titulo, items = [], onClose }) {
+export default function ClusterModal({ titulo, items = [], onClose, onSelect }) {
   const closeRef = useRef(null);
   const prevFocus = useRef(null);
   const dialogRef = useRef(null);
@@ -97,37 +97,55 @@ export default function ClusterModal({ titulo, items = [], onClose }) {
         </div>
 
         <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
-          {items.map((it) => (
-            <li key={it.id} className="flex items-center gap-3 px-4 py-3">
-              <FotoChica src={it.fotoSrc} alt={it.titulo} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-slate-900">{it.titulo}</span>
-                  {it.badgeLabel && (
-                    <span
-                      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
-                      style={{ background: it.badgeColor || '#9ca3af' }}
+          {items.map((it) => {
+            const info = (
+              <>
+                <FotoChica src={it.fotoSrc} alt={it.titulo} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-slate-900">{it.titulo}</span>
+                    {it.badgeLabel && (
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+                        style={{ background: it.badgeColor || '#9ca3af' }}
+                      >
+                        {it.badgeLabel}
+                      </span>
+                    )}
+                  </div>
+                  {it.subtitulo && <p className="truncate text-xs text-slate-500">{it.subtitulo}</p>}
+                  {!onSelect && it.fuenteUrl && (
+                    <a
+                      href={it.fuenteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
                     >
-                      {it.badgeLabel}
-                    </span>
+                      <FuenteIcono url={it.fuenteUrl} />
+                      Ver publicación
+                      <span className="sr-only"> (abre en nueva pestaña)</span>
+                    </a>
                   )}
                 </div>
-                {it.subtitulo && <p className="truncate text-xs text-slate-500">{it.subtitulo}</p>}
-                {it.fuenteUrl && (
-                  <a
-                    href={it.fuenteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
+              </>
+            );
+            return (
+              <li key={it.id}>
+                {onSelect ? (
+                  <button
+                    type="button"
+                    onClick={() => onSelect(it.raw ?? it)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50"
                   >
-                    <FuenteIcono url={it.fuenteUrl} />
-                    Ver publicación
-                    <span className="sr-only"> (abre en nueva pestaña)</span>
-                  </a>
+                    {info}
+                    <span className="shrink-0 text-slate-300" aria-hidden="true">›</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-3">{info}</div>
                 )}
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>,

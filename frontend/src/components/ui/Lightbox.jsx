@@ -57,7 +57,7 @@ export default function Lightbox({ src, alt = 'Foto', caption, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label={alt}
-      className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-[3000] flex flex-col items-center justify-center bg-black/80 p-4"
       style={{
         paddingTop: 'calc(1rem + env(safe-area-inset-top))',
         paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',

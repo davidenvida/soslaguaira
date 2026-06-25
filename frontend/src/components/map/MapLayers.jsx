@@ -9,7 +9,7 @@ import AtrapadosLayer from './AtrapadosLayer';
 import DesaparecidosLayer from './DesaparecidosLayer';
 
 export default function MapLayers() {
-  const { data, visibility, filters, destacarId } = useMapData();
+  const { data, visibility, filters, destacarId, refresh } = useMapData();
   return (
     <>
       {visibility.edificios && (
@@ -20,6 +20,7 @@ export default function MapLayers() {
           desaparecidos={data.desaparecidos}
           estadoFiltro={filters.desaparecidos}
           destacarId={destacarId}
+          onPersonaUpdate={refresh}
         />
       )}
       {visibility.personas && (

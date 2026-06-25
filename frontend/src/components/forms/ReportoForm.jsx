@@ -15,6 +15,10 @@ const ESTADOS = [
 
 const schema = Yup.object({
   nombre: Yup.string().trim().required('El nombre es obligatorio'),
+  cedula: Yup.string()
+    .trim()
+    .matches(/^[0-9VEJGvejg.\-\s]*$/, 'Cédula: solo números, V/E/J/G, puntos o guiones')
+    .max(20, 'Cédula demasiado larga'),
   edad: Yup.number().typeError('Edad inválida').integer().min(0).max(120).nullable(),
   estado: Yup.string().required(),
   descripcion: Yup.string().trim().max(600, 'Máximo 600 caracteres'),
@@ -46,6 +50,7 @@ export default function ReportoForm({ onSuccess }) {
       <Formik
         initialValues={{
           nombre: '',
+          cedula: '',
           edad: '',
           estado: 'a_salvo',
           descripcion: '',
@@ -67,6 +72,7 @@ export default function ReportoForm({ onSuccess }) {
             const data = await createPersona({
               tipo: 'reporto',
               nombre: values.nombre.trim(),
+              cedula: values.cedula.trim() || null,
               edad: values.edad === '' ? null : Number(values.edad),
               estado: values.estado,
               descripcion: values.descripcion.trim() || null,
@@ -92,6 +98,12 @@ export default function ReportoForm({ onSuccess }) {
         {({ isSubmitting, status }) => (
           <Form className="flex flex-col gap-4">
             <TextInput name="nombre" label="Nombre de la persona" required placeholder="Nombre y apellido" />
+            <TextInput
+              name="cedula"
+              label="Cédula (opcional)"
+              placeholder="Ej: V-12345678"
+              hint="Ayuda al match con listas de hospitales"
+            />
             <div className="grid grid-cols-2 gap-3">
               <NumberInput name="edad" label="Edad" placeholder="Años" min="0" max="120" />
               <SelectInput name="estado" label="Estado" options={ESTADOS} />

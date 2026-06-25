@@ -15,6 +15,7 @@ import { personaEstado } from './mapColors';
 import { desaparecidoIcon, clusterIcon, DESAPARECIDO_COLOR } from './markerIcons';
 import { agruparPorProximidad } from './clustering';
 import ClusterModal from './ClusterModal';
+import PersonaDetalle from '../desaparecidos/PersonaDetalle';
 import PopupFoto from './PopupFoto';
 import FuenteIcono from '../ui/FuenteIcono';
 import { resolveFoto, hasLatLng } from './fields';
@@ -23,7 +24,8 @@ const nombre = (d) => d.nombre_completo || d.nombreCompleto || d.nombre || 'Sin 
 const ubicacion = (d) => d.ultima_ubicacion || d.ultimaUbicacion || d.parroquia || '';
 const fuente = (d) => d.fuente_url || d.fuenteUrl || '';
 
-// Normaliza un reporte al formato que consume ClusterModal.
+// Normaliza un reporte al formato que consume ClusterModal. `raw` lleva el
+// registro completo para abrir la ficha (PersonaDetalle) al seleccionarlo.
 const toItem = (d) => {
   const est = personaEstado(d.estado);
   return {
@@ -34,6 +36,7 @@ const toItem = (d) => {
     badgeLabel: est.label,
     badgeColor: est.color,
     fuenteUrl: fuente(d),
+    raw: d,
   };
 };
 
@@ -95,8 +98,14 @@ function MarcadorDesaparecido({ d, lat, lng, destacado }) {
   );
 }
 
-export default function DesaparecidosLayer({ desaparecidos = [], estadoFiltro = 'todos', destacarId = null }) {
+export default function DesaparecidosLayer({
+  desaparecidos = [],
+  estadoFiltro = 'todos',
+  destacarId = null,
+  onPersonaUpdate,
+}) {
   const [modal, setModal] = useState(null); // { titulo, items } | null
+  const [detalle, setDetalle] = useState(null); // persona | null
 
   const grupos = useMemo(() => {
     const visibles = desaparecidos
@@ -140,7 +149,19 @@ export default function DesaparecidosLayer({ desaparecidos = [], estadoFiltro = 
         )}
       </LayerGroup>
       {modal && (
-        <ClusterModal titulo={modal.titulo} items={modal.items} onClose={() => setModal(null)} />
+        <ClusterModal
+          titulo={modal.titulo}
+          items={modal.items}
+          onClose={() => setModal(null)}
+          onSelect={(p) => setDetalle(p)}
+        />
+      )}
+      {detalle && (
+        <PersonaDetalle
+          persona={detalle}
+          onClose={() => setDetalle(null)}
+          onUpdate={() => onPersonaUpdate?.()}
+        />
       )}
     </>
   );

@@ -60,16 +60,6 @@ const ACTIVE = {
   red: 'ring-2 ring-red-500',
 };
 
-const ICONS = {
-  rose: 'M7 3h7l5 5v13H7zM14 3v5h5',
-  amber: 'M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z',
-  emerald: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z',
-  slate: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z',
-  red: 'M1 21h22L12 2zM12 16a1.2 1.2 0 1 0 0 2.4A1.2 1.2 0 0 0 12 16zm-1-7v5h2V9z',
-  sky: 'M9 3 7.2 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z',
-  violet: 'M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z',
-};
-
 export default function EstadisticasDirectorio({ items = [], estado = '', onEstado }) {
   const [stats, setStats] = useState(null);
 
@@ -108,36 +98,28 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
   const canFilter = typeof onEstado === 'function';
 
   return (
+    // Una sola fila horizontal de chips compactos; en móvil scrollea en X si no
+    // entran (nunca dos filas) para que los reportes queden en la primera pantalla.
     <ul
-      className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4"
+      className="-mx-3 mb-3 flex flex-nowrap gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4"
       aria-label="Estadísticas del directorio"
     >
       {cards.map(({ key, label, color, filtro }) => {
         const clickable = canFilter && filtro !== undefined;
         const activo = clickable && filtro === estado;
-        const cls = `flex w-full items-center gap-2 rounded-xl p-2 text-left ring-1 sm:gap-3 sm:p-3 ${COLORS[color]} ${
-          activo ? ACTIVE[color] || 'ring-2' : ''
+        const cls = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 ring-1 ${COLORS[color]} ${
+          activo ? `${ACTIVE[color] || 'ring-2'} ring-offset-1 ring-offset-slate-50` : ''
         } ${clickable ? 'cursor-pointer transition hover:brightness-95' : ''}`;
 
         const contenido = (
           <>
-            <svg
-              className="hidden h-7 w-7 shrink-0 opacity-80 sm:block"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d={ICONS[color]} />
-            </svg>
-            <div className="min-w-0">
-              <div className="text-xl font-extrabold leading-none tabular-nums sm:text-3xl">{fmt(vista[key])}</div>
-              <div className="mt-0.5 truncate text-[10px] font-medium opacity-80 sm:mt-1 sm:text-xs">{label}</div>
-            </div>
+            <span className="text-sm font-extrabold tabular-nums leading-none">{fmt(vista[key])}</span>
+            <span className="text-[11px] font-medium opacity-80">{label}</span>
           </>
         );
 
         return (
-          <li key={key}>
+          <li key={key} className="shrink-0">
             {clickable ? (
               <button type="button" onClick={() => onEstado(filtro)} aria-pressed={activo} className={cls}>
                 {contenido}
