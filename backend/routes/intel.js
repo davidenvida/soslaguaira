@@ -332,6 +332,11 @@ router.patch('/personas/:id', async (req, res, next) => {
 
     // Campos enriquecibles (solo los presentes en el body).
     if (b.foto_url !== undefined) addSet('foto_url', cleanStr(b.foto_url, 500));
+    // fuente_url PRIMARIO editable (corregir cruces de fuente). No puede quedar vacio.
+    if (b.fuente_url !== undefined) {
+      if (!isNonEmptyString(b.fuente_url)) return fail(res, "'fuente_url' no puede quedar vacio.");
+      addSet('fuente_url', cleanStr(b.fuente_url, 500));
+    }
     if (b.ultima_ubicacion !== undefined) addSet('ultima_ubicacion', cleanStr(b.ultima_ubicacion, 300));
     if (b.parroquia !== undefined) addSet('parroquia', cleanStr(b.parroquia, 120));
     if (b.sector_o_edificio !== undefined) addSet('sector_o_edificio', cleanStr(b.sector_o_edificio, 200));

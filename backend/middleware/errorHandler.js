@@ -10,6 +10,9 @@ export const errorHandler = (err, req, res, next) => {
   if (err.message === 'TIPO_ARCHIVO_INVALIDO') {
     return fail(res, 'Tipo de archivo no permitido. Solo imagenes (jpg, png, webp, gif).', 415);
   }
+  if (err.code === '23505') { // violacion de indice unico (PostgreSQL)
+    return fail(res, 'Conflicto: ya existe un registro con esos valores unicos.', 409);
+  }
 
   return fail(res, 'Error interno del servidor.', 500);
 };
