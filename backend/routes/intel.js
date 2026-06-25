@@ -3,7 +3,7 @@ import { pool, query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { intelLimiter } from '../middleware/rateLimit.js';
 import {
-  isNonEmptyString, oneOf, cleanStr, toIntOrNull, toNumberOrNull, normalizeName,
+  isNonEmptyString, oneOf, cleanStr, toIntOrNull, toNumberOrNull, normalizeName, validCoords,
 } from '../utils/validate.js';
 import { buildGeocoder } from '../utils/geocode.js';
 
@@ -13,6 +13,7 @@ const router = Router();
 router.use(intelLimiter);
 
 const ESTADOS_INTEL = ['desaparecido', 'a_salvo', 'fallecido', 'atrapado'];
+const ORIGENES = ['osint', 'app'];
 const TIPOS_RESIDENCIA = ['urbanizacion', 'edificio', 'sector'];
 
 // Acepta un objeto suelto, un array, o { items: [...] }.
@@ -58,12 +59,16 @@ router.post('/personas', async (req, res, next) => {
     const rejected = [];
     items.forEach((raw, i) => {
       const it = raw || {};
+      const origen = it.origen || 'osint';
       if (!isNonEmptyString(it.nombre_completo)) {
-        rejected.push({ index: i, reason: "nombre_completo es obligatorio", item: raw });
+        rejected.push({ index: i, reason: 'nombre_completo es obligatorio', item: raw });
       } else if (!oneOf(it.estado, ESTADOS_INTEL)) {
         rejected.push({ index: i, reason: `estado invalido (${ESTADOS_INTEL.join('|')})`, item: raw });
-      } else if (!isNonEmptyString(it.fuente_url)) {
-        rejected.push({ index: i, reason: 'fuente_url requerido para trazabilidad', item: raw });
+      } else if (!oneOf(origen, ORIGENES)) {
+        rejected.push({ index: i, reason: `origen invalido (${ORIGENES.join('|')})`, item: raw });
+      } else if (origen === 'osint' && !isNonEmptyString(it.fuente_url)) {
+        // fuente_url solo es obligatorio para OSINT (trazabilidad al tweet); la app no tiene tweet.
+        rejected.push({ index: i, reason: 'fuente_url requerido para trazabilidad (origen osint)', item: raw });
       } else {
         valid.push(it);
       }
@@ -75,8 +80,9 @@ router.post('/personas', async (req, res, next) => {
     const sql = `
       INSERT INTO personas_intel
         (nombre_completo, edad, estado, ultima_ubicacion, parroquia, sector_o_edificio,
-         descripcion, foto_url, reportante, relacion, contacto, fuente_url, fecha_reporte, notas)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, COALESCE($13, now()), $14)
+         descripcion, foto_url, reportante, relacion, contacto, fuente_url, fecha_reporte, notas,
+         origen, lat, lng)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, COALESCE($13, now()), $14, $15, $16, $17)
       ON CONFLICT (nombre_completo, fuente_url) DO UPDATE SET
         edad              = COALESCE(EXCLUDED.edad, personas_intel.edad),
         estado            = COALESCE(EXCLUDED.estado, personas_intel.estado),
@@ -88,25 +94,33 @@ router.post('/personas', async (req, res, next) => {
         reportante        = COALESCE(EXCLUDED.reportante, personas_intel.reportante),
         relacion          = COALESCE(EXCLUDED.relacion, personas_intel.relacion),
         contacto          = COALESCE(EXCLUDED.contacto, personas_intel.contacto),
-        notas             = COALESCE(EXCLUDED.notas, personas_intel.notas)
+        notas             = COALESCE(EXCLUDED.notas, personas_intel.notas),
+        lat               = COALESCE(EXCLUDED.lat, personas_intel.lat),
+        lng               = COALESCE(EXCLUDED.lng, personas_intel.lng)
       RETURNING id, (xmax = 0) AS is_insert`;
 
-    const buildParams = (it) => [
-      cleanStr(it.nombre_completo, 200),
-      toIntOrNull(it.edad),
-      it.estado,
-      cleanStr(it.ultima_ubicacion, 300),
-      cleanStr(it.parroquia, 120),
-      cleanStr(it.sector_o_edificio, 200),
-      cleanStr(it.descripcion, 2000),
-      cleanStr(it.foto_url, 500),
-      cleanStr(it.reportante, 200),
-      cleanStr(it.relacion, 120),
-      cleanStr(it.contacto, 120),
-      cleanStr(it.fuente_url, 500),
-      it.fecha_reporte || null, // null -> COALESCE a now()
-      cleanStr(it.notas, 2000),
-    ];
+    const buildParams = (it) => {
+      const coords = validCoords(it.lat, it.lng); // pin directo del mapa (o null)
+      return [
+        cleanStr(it.nombre_completo, 200),
+        toIntOrNull(it.edad),
+        it.estado,
+        cleanStr(it.ultima_ubicacion, 300),
+        cleanStr(it.parroquia, 120),
+        cleanStr(it.sector_o_edificio, 200),
+        cleanStr(it.descripcion, 2000),
+        cleanStr(it.foto_url, 500),
+        cleanStr(it.reportante, 200),
+        cleanStr(it.relacion, 120),
+        cleanStr(it.contacto, 120),
+        cleanStr(it.fuente_url, 500),
+        it.fecha_reporte || null, // null -> COALESCE a now()
+        cleanStr(it.notas, 2000),
+        it.origen === 'app' ? 'app' : 'osint',
+        coords ? coords.lat : null,
+        coords ? coords.lng : null,
+      ];
+    };
 
     let inserted = 0;
     let updated = 0;
@@ -198,10 +212,15 @@ router.get('/personas', async (req, res, next) => {
       pageParams
     );
 
-    // Geocodifica cada fila contra el gazetteer de residencias (edificio -> centroide parroquia).
+    // Ubicacion: si la fila trae lat/lng directos (pin del formulario) se usan tal cual
+    // (geo_fuente='precisa'); si no, se geocodifica contra el gazetteer de residencias.
     const gaz = (await query('SELECT nombre, parroquia, lat, lon FROM residencias')).rows;
     const geocode = buildGeocoder(gaz);
-    const items = rows.map((r) => ({ ...r, ...geocode(r) }));
+    const items = rows.map((r) =>
+      (r.lat != null && r.lng != null)
+        ? { ...r, geo_fuente: 'precisa' }
+        : { ...r, ...geocode(r) }
+    );
 
     const data = {
       items,
