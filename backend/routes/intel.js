@@ -187,6 +187,11 @@ router.get('/personas', async (req, res, next) => {
     const incluirDups = inclDup === 'true' || inclDup === '1';
     if (!incluirDups) conds.push('duplicate_of IS NULL');
 
+    // PRIVACIDAD (decision David): los FALLECIDOS no van en el directorio publico (no se listan
+    // ni se cuentan). Solo admin (X-Admin-Token) puede verlos (ej ?estado=fallecido con token).
+    const esAdmin = process.env.ADMIN_TOKEN && req.get('x-admin-token') === process.env.ADMIN_TOKEN;
+    if (!esAdmin) conds.push("estado <> 'fallecido'");
+
     // Filtro opcional de flaggeadas (takedown): flagged=false oculta, flagged=true = cola de revision.
     if (req.query.flagged === 'false') conds.push('flagged = false');
     else if (req.query.flagged === 'true') conds.push('flagged = true');
@@ -292,12 +297,13 @@ router.get('/personas/duplicados', async (req, res, next) => {
   }
 });
 
-// GET /api/intel/personas/stats  -> resumen para el directorio (solo no-duplicados).
+// GET /api/intel/personas/stats  -> resumen del directorio PUBLICO (no-duplicados, SIN fallecidos).
+// Los fallecidos no se cuentan en la metrica publica (decision de privacidad de David).
 router.get('/personas/stats', async (req, res, next) => {
   try {
     const rows = (await query(
       `SELECT estado, foto_url, lat, lng, sector_o_edificio, ultima_ubicacion, parroquia
-       FROM personas_intel WHERE duplicate_of IS NULL`
+       FROM personas_intel WHERE duplicate_of IS NULL AND estado <> 'fallecido'`
     )).rows;
 
     const gaz = (await query('SELECT nombre, parroquia, lat, lon FROM residencias')).rows;
