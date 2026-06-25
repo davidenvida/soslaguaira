@@ -165,9 +165,16 @@ export default function SubirListaManuscrita({ className = '' }) {
             <path d="M18.5 2.2l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z" />
           </svg>
           Subir lista manuscrita
+          <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold">
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M11 3l1.6 4.4L17 9l-4.4 1.6L11 15l-1.6-4.4L5 9l4.4-1.6zM18 13l.9 2.1L21 16l-2.1.9L18 19l-.9-2.1L15 16l2.1-.9z" />
+            </svg>
+            IA
+          </span>
         </button>
         <p className="hidden min-w-[12rem] flex-1 text-xs text-slate-600 sm:block">
-          ¿Tienes una foto de una lista de un hospital (ingresados, traslados o fallecidos)? Súbela y la convertimos en digital.
+          ¿Tienes una foto de una lista de un hospital? Súbela y la convertimos en digital.{' '}
+          <span className="font-semibold text-violet-700">Será analizada por inteligencia artificial.</span>
         </p>
       </div>
 
@@ -194,6 +201,13 @@ export default function SubirListaManuscrita({ className = '' }) {
             </div>
           ) : (
             <form onSubmit={enviar} className="space-y-4">
+              {/* Aviso de IA: la lista se procesa con inteligencia artificial. */}
+              <p className="flex items-center gap-1.5 rounded-lg bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 ring-1 ring-violet-200">
+                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M11 3l1.6 4.4L17 9l-4.4 1.6L11 15l-1.6-4.4L5 9l4.4-1.6zM18 13l.9 2.1L21 16l-2.1.9L18 19l-.9-2.1L15 16l2.1-.9z" />
+                </svg>
+                Será analizada por inteligencia artificial.
+              </p>
               {/* Zona de arrastrar/elegir foto */}
               <div>
                 <span className="mb-1.5 block text-sm font-semibold text-slate-700">1. Foto de la lista</span>
