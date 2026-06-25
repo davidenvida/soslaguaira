@@ -1,6 +1,6 @@
 // Transfiere los archivos de backend/uploads del DEV al Volume de PROD, conservando el
 // nombre EXACTO (para que las foto_url cargadas matcheen). Usa el endpoint temporal
-// POST /api/upload-import (token-gated por IMPORT_TOKEN).
+// POST /api/upload/import con header X-Import-Token (token-gated por env IMPORT_TOKEN).
 //
 // Uso (desde backend/, en el DEV):
 //   TARGET_URL=https://backend-production-xxxx.up.railway.app IMPORT_TOKEN=elsecreto node import_uploads_to_prod.js
@@ -34,8 +34,9 @@ async function run() {
     const fd = new FormData();
     fd.append('foto', new Blob([buf], { type: MIME[ext] }), name);
     try {
-      const res = await fetch(`${TARGET}/api/upload-import?token=${encodeURIComponent(TOKEN)}`, {
+      const res = await fetch(`${TARGET}/api/upload/import`, {
         method: 'POST',
+        headers: { 'X-Import-Token': TOKEN },
         body: fd,
       });
       const json = await res.json().catch(() => ({}));
