@@ -320,6 +320,42 @@ router.get('/', adminGate, async (req, res, next) => {
   }
 });
 
+// Tipos PUBLICABLES (no sensibles): ingresados/trasladados/heridos. Fallecidos/morgue JAMAS publico.
+const SQL_TIPO_PUBLICO = `(tipo ~* 'ingres|admit|hospital|atend|triage|trasl|refer|remit|herid|lesion|quemad') AND (tipo !~* 'fallec|muert|morgue|obito|deces')`;
+
+// GET /api/listas/publicas  -> PUBLICO (sin token): solo listas no sensibles, sin cedulas.
+router.get('/publicas', async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, fuente, tipo, foto_url, total_entradas AS total, created_at AS fecha
+       FROM listas_manuscritas WHERE ${SQL_TIPO_PUBLICO} ORDER BY created_at DESC, id DESC`
+    );
+    return ok(res, rows, 'Listas publicas.');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/listas/publicas/:id  -> PUBLICO: entradas SIN cedula. 404 si la lista es sensible (fallecidos).
+router.get('/publicas/:id', async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const lista = (await query(
+      `SELECT id, fuente, tipo, foto_url, total_entradas AS total, created_at AS fecha
+       FROM listas_manuscritas WHERE id = $1 AND ${SQL_TIPO_PUBLICO}`, [id]
+    )).rows[0];
+    if (!lista) return fail(res, 'Lista no disponible.', 404);
+    // Vista publica: nombre + estado + lugar. SIN cedula (se usa solo internamente para el match).
+    const entradas = (await query(
+      'SELECT nombre, estado, lugar FROM lista_entradas WHERE lista_id = $1 ORDER BY id', [id]
+    )).rows;
+    return ok(res, { ...lista, entradas }, 'Detalle de lista (publico).');
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/listas/:id  -> entradas de una lista + sus coincidencias FRESCAS contra el directorio (admin).
 router.get('/:id', adminGate, async (req, res, next) => {
   try {
