@@ -170,59 +170,63 @@ export default function HospitalesView({ coincInicial }) {
 
   return (
     <section aria-label="Hospitales" className="mx-auto flex h-full w-full max-w-4xl flex-col px-3 pb-2 pt-3 sm:px-4">
-      {/* Título + dropdown de hospital a la derecha, en la misma línea (libera alto). */}
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <h2 className="shrink-0 text-base font-bold text-slate-900">Hospitales</h2>
-        <label htmlFor="hosp-sel" className="sr-only">Filtrar por hospital</label>
-        <select
-          id="hosp-sel"
-          value={sel}
-          onChange={(e) => setSel(e.target.value)}
-          className="min-w-0 max-w-[70%] rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-        >
-          <option value="todos">Todos{totalTodos ? ` (${totalTodos})` : ''}</option>
-          {hospitales.map((h) => (
-            <option key={h.hospital} value={h.hospital}>
-              {h.hospital}{h.total != null ? ` (${h.total})` : ''}
-            </option>
+      {/* Cabecera en UNA fila en desktop (título + dropdown + filtros + buscador);
+          en móvil apila. El subtítulo va debajo, chico. */}
+      <div className="mb-1 flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+        {/* Título + dropdown de hospital, pegados */}
+        <div className="flex items-center gap-2 lg:shrink-0">
+          <h2 className="shrink-0 text-base font-bold text-slate-900">Hospitales</h2>
+          <label htmlFor="hosp-sel" className="sr-only">Filtrar por hospital</label>
+          <select
+            id="hosp-sel"
+            value={sel}
+            onChange={(e) => setSel(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 lg:flex-none lg:max-w-[14rem]"
+          >
+            <option value="todos">Todos{totalTodos ? ` (${totalTodos})` : ''}</option>
+            {hospitales.map((h) => (
+              <option key={h.hospital} value={h.hospital}>
+                {h.hospital}{h.total != null ? ` (${h.total})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Filtro de coincidencia: botones (no dropdown). */}
+        <div role="group" aria-label="Filtrar por coincidencia" className="flex gap-2 lg:shrink-0">
+          {[
+            { v: 'todas', label: 'Todas' },
+            { v: 'con', label: 'Con coincidencia' },
+            { v: 'sin', label: 'Sin coincidencia' },
+          ].map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              onClick={() => setCoincFiltro(o.v)}
+              aria-pressed={coincFiltro === o.v}
+              className={`min-h-[36px] flex-1 rounded-full px-3 text-xs font-semibold ring-1 transition lg:flex-none ${
+                coincFiltro === o.v ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              {o.label}
+            </button>
           ))}
-        </select>
+        </div>
+
+        {/* Buscador dentro de la lista */}
+        <label htmlFor="hosp-q" className="sr-only">Buscar por nombre o cédula</label>
+        <input
+          id="hosp-q"
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar por nombre o cédula…"
+          className="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 lg:flex-1"
+        />
       </div>
       <p className="mb-3 text-xs text-slate-500">
         Personas ingresadas, trasladadas o heridas reportadas por los hospitales. Verde = coincide con un reporte del directorio.
       </p>
-
-      {/* Buscador dentro de la lista */}
-      <label htmlFor="hosp-q" className="sr-only">Buscar por nombre o cédula</label>
-      <input
-        id="hosp-q"
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Buscar por nombre o cédula…"
-        className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-      />
-
-      {/* Filtro de coincidencia: botones (no dropdown). */}
-      <div role="group" aria-label="Filtrar por coincidencia" className="mb-3 flex gap-2">
-        {[
-          { v: 'todas', label: 'Todas' },
-          { v: 'con', label: 'Con coincidencia' },
-          { v: 'sin', label: 'Sin coincidencia' },
-        ].map((o) => (
-          <button
-            key={o.v}
-            type="button"
-            onClick={() => setCoincFiltro(o.v)}
-            aria-pressed={coincFiltro === o.v}
-            className={`min-h-[36px] flex-1 rounded-full px-3 text-xs font-semibold ring-1 transition sm:flex-none ${
-              coincFiltro === o.v ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
 
       {/* Aviso: los matches son por NOMBRE (candidatos), no confirmados. */}
       {coincFiltro === 'con' && (
