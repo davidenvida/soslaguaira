@@ -22,6 +22,7 @@ import listasRouter from './routes/listas.js';
 import hospitalesRouter from './routes/hospitales.js';
 import buscarRouter from './routes/buscar.js';
 import voluntariosRouter from './routes/voluntarios.js';
+import erroresRouter from './routes/errores.js';
 
 dotenv.config();
 
@@ -74,6 +75,7 @@ app.use('/api/buscar', buscarRouter); // GET /api/buscar?q= -> { reportes, hospi
 app.use('/api/voluntarios', voluntariosRouter); // POST (registro/bulk) + GET (lista publica)
 app.use('/api', visitasRouter); // POST /api/visita, GET /api/visitas/resumen
 app.use('/api', sugerenciasRouter); // POST /api/sugerencias, GET /api/sugerencias (admin)
+app.use('/api', erroresRouter); // POST /api/errores, GET /api/errores (admin)
 app.use('/api', confirmacionesRouter); // POST /api/:tipo/:id/confirmar
 
 // 404 + manejador de errores (siempre al final).
