@@ -20,6 +20,7 @@ import visitasRouter from './routes/visitas.js';
 import sugerenciasRouter from './routes/sugerencias.js';
 import listasRouter from './routes/listas.js';
 import hospitalesRouter from './routes/hospitales.js';
+import buscarRouter from './routes/buscar.js';
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ app.use('/api/upload', uploadRouter); // incluye POST /api/upload/import (tempor
 app.use('/api/intel', intelRouter);
 app.use('/api/listas', listasRouter); // POST /api/listas/interpretar (GPT-4o vision + match)
 app.use('/api/hospitales', hospitalesRouter); // GET /api/hospitales, /buscar (reunificacion)
+app.use('/api/buscar', buscarRouter); // GET /api/buscar?q= -> { reportes, hospitales } unificado
 app.use('/api', visitasRouter); // POST /api/visita, GET /api/visitas/resumen
 app.use('/api', sugerenciasRouter); // POST /api/sugerencias, GET /api/sugerencias (admin)
 app.use('/api', confirmacionesRouter); // POST /api/:tipo/:id/confirmar

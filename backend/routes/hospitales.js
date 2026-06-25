@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
-import { compareNombres } from '../utils/match.js';
-import { normalizarCedula } from '../utils/validate.js';
 import { SQL_TIPO_PUBLICO } from '../utils/listasTipo.js';
+import { buscarEnHospitales } from '../utils/busqueda.js';
 
 const router = Router();
 
@@ -24,39 +23,13 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET /api/hospitales/buscar?q=<nombre|cedula>&hospital=<nombre|todos>
-// Busqueda DIRIGIDA (requiere q): por CEDULA exacta o por NOMBRE (nombre Y apellido, fuzzy).
-// Excluye fallecidos (privados). Info COMPLETA con cedula (directiva de David: reunificacion).
+// Busqueda DIRIGIDA por CEDULA exacta o NOMBRE (nombre Y apellido). Excluye fallecidos.
+// Info COMPLETA con cedula (directiva de David: reunificacion). -> {nombre,cedula,estado,detalle,lugar,hospital,lista_id}
 router.get('/buscar', async (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim();
     if (q.length < 2) return fail(res, "Parametro 'q' requerido (nombre o cedula).");
-
-    const hospital = req.query.hospital;
-    const conds = [SQL_TIPO_PUBLICO];
-    const params = [];
-    if (hospital && hospital !== 'todos' && hospital.trim()) {
-      params.push(`%${hospital.trim()}%`);
-      conds.push(`l.fuente ILIKE $${params.length}`);
-    }
-
-    const SELECT = `SELECT e.nombre, e.cedula, e.estado, e.detalle, e.lugar, l.fuente AS hospital, l.id AS lista_id
-                    FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id`;
-
-    const ced = normalizarCedula(q);
-    let rows;
-    if (ced) {
-      params.push(ced);
-      conds.push(`e.cedula = $${params.length}`);
-      rows = (await query(`${SELECT} WHERE ${conds.join(' AND ')} LIMIT 100`, params)).rows;
-    } else {
-      const toks = q.toLowerCase().split(/\s+/).filter((t) => t.length >= 3).sort((a, b) => b.length - a.length);
-      params.push(`%${toks[0] || q}%`);
-      conds.push(`e.nombre ILIKE $${params.length}`);
-      const cand = (await query(`${SELECT} WHERE ${conds.join(' AND ')} LIMIT 300`, params)).rows;
-      const minShared = Math.min(2, Math.max(1, toks.length)); // 1 token -> shared>=1; 2+ -> nombre Y apellido
-      rows = cand.filter((r) => compareNombres(q, r.nombre).shared >= minShared).slice(0, 100);
-    }
-
+    const rows = await buscarEnHospitales(query, q, req.query.hospital);
     return ok(res, rows, `${rows.length} coincidencia(s) en hospitales.`);
   } catch (err) {
     next(err);
