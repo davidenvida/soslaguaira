@@ -17,6 +17,7 @@ import uploadRouter from './routes/upload.js';
 import confirmacionesRouter from './routes/confirmaciones.js';
 import intelRouter from './routes/intel.js';
 import visitasRouter from './routes/visitas.js';
+import sugerenciasRouter from './routes/sugerencias.js';
 
 dotenv.config();
 
@@ -64,6 +65,7 @@ app.use('/api/edificios', edificiosRouter);
 app.use('/api/upload', uploadRouter); // incluye POST /api/upload/import (temporal, token-gated)
 app.use('/api/intel', intelRouter);
 app.use('/api', visitasRouter); // POST /api/visita, GET /api/visitas/resumen
+app.use('/api', sugerenciasRouter); // POST /api/sugerencias, GET /api/sugerencias (admin)
 app.use('/api', confirmacionesRouter); // POST /api/:tipo/:id/confirmar
 
 // 404 + manejador de errores (siempre al final).
