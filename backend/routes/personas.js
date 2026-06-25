@@ -6,7 +6,7 @@ import {
   isNonEmptyString, oneOf, cleanStr, toIntOrNull, validCoords, normalizarCedula,
 } from '../utils/validate.js';
 import { matchScore } from '../utils/match.js';
-import { buscarAlertas } from '../utils/alertas.js';
+import { evaluarAlertas } from '../utils/alertas.js';
 
 const router = Router();
 
@@ -53,7 +53,7 @@ router.post('/', writeLimiter, async (req, res, next) => {
 
     // Alerta proactiva de reunificacion: cruce por cedula contra el roster privado de listas.
     const ced = normalizarCedula(b.cedula) || (rows[0].cedula || null);
-    const alertas = ced ? await buscarAlertas(query, rows[0].nombre, ced, { soloCedula: true }) : [];
+    const alertas = ced ? await evaluarAlertas(query, { nombre: rows[0].nombre, cedula: ced, origen: 'personas' }) : [];
 
     return ok(res, { ...rows[0], alertas }, 'Persona registrada.', 201);
   } catch (err) {

@@ -3,7 +3,7 @@ import multer from 'multer';
 import { pool, query } from '../db.js';
 import { ok, fail } from '../utils/response.js';
 import { writeLimiter } from '../middleware/rateLimit.js';
-import { cleanStr, isNonEmptyString, normalizarCedula } from '../utils/validate.js';
+import { cleanStr, isNonEmptyString, normalizarCedula, toIntOrNull } from '../utils/validate.js';
 import { compareNombres } from '../utils/match.js';
 
 const router = Router();
@@ -218,6 +218,39 @@ router.post('/', adminGate, writeLimiter, async (req, res, next) => {
     } finally {
       client.release();
     }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/listas/sensibles -> cola PRIVADA de coincidencias con roster de fallecidos (admin/David).
+router.get('/sensibles', adminGate, async (req, res, next) => {
+  try {
+    const soloPend = req.query.atendida === 'false';
+    const where = soloPend ? 'WHERE atendida = false' : '';
+    const { rows } = await query(
+      `SELECT id, reportado_nombre, reportado_cedula, reportado_origen, entrada_nombre,
+              entrada_estado, lista_fuente, lista_tipo, atendida, created_at
+       FROM coincidencias_sensibles ${where} ORDER BY atendida, created_at DESC`
+    );
+    return ok(res, rows, 'Coincidencias sensibles (privado).');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/listas/sensibles/:id -> marcar atendida (admin).
+router.patch('/sensibles/:id', adminGate, async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const atendida = (req.body || {}).atendida !== false; // default true
+    const { rows } = await query(
+      'UPDATE coincidencias_sensibles SET atendida = $1 WHERE id = $2 RETURNING *',
+      [atendida, id]
+    );
+    if (!rows.length) return fail(res, 'No encontrada.', 404);
+    return ok(res, rows[0], 'Actualizada.');
   } catch (err) {
     next(err);
   }

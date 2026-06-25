@@ -6,7 +6,7 @@ import {
   isNonEmptyString, oneOf, cleanStr, toIntOrNull, toNumberOrNull, normalizeName, validCoords, normalizarCedula,
 } from '../utils/validate.js';
 import { buildGeocoder } from '../utils/geocode.js';
-import { buscarAlertas } from '../utils/alertas.js';
+import { evaluarAlertas } from '../utils/alertas.js';
 
 const router = Router();
 
@@ -158,7 +158,7 @@ router.post('/personas', async (req, res, next) => {
       if ((it.origen || 'osint') !== 'app') continue;
       const ced = normalizarCedula(it.cedula);
       if (!ced) continue;
-      const hits = await buscarAlertas(query, it.nombre_completo, ced, { soloCedula: true });
+      const hits = await evaluarAlertas(query, { nombre: it.nombre_completo, cedula: ced, origen: 'intel-app' });
       if (hits.length) alertas.push({ nombre: it.nombre_completo, cedula: ced, coincidencias: hits });
     }
 
