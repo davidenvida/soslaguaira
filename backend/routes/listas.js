@@ -80,6 +80,17 @@ function extraerCedulas(text) {
   return [...out];
 }
 
+// Mapea el TIPO de la lista (lo manda el form) a un estado por defecto.
+// Las personas sin marcador individual heredan el tipo de la lista (critico p.ej. fallecidos).
+const estadoDeTipo = (tipo) => {
+  const t = String(tipo || '').toLowerCase();
+  if (/fallec|muert|occis|obito|morgue|deces/.test(t)) return 'fallecido';
+  if (/traslad/.test(t)) return 'trasladado';
+  if (/herid|lesion|trauma|quemad/.test(t)) return 'herido';
+  if (/ingres|admit|hospital|vivo|estable/.test(t)) return 'ingresado';
+  return null; // desaparecidos / desconocido / sin tipo -> no se fuerza
+};
+
 // Match de los nombres transcritos contra personas_intel.
 // CONFIANZA: 'alta' = cedula exacta (definitivo); 'media' = NOMBRE Y APELLIDO coinciden.
 // Evita falsos positivos por solo-apellido/solo-nombre (peligroso en rescate).
@@ -138,11 +149,22 @@ router.post('/interpretar', writeLimiter, memUpload.single('foto'), async (req, 
     }
 
     const personas = await interpretarConGPT(imageUrl, cleanStr(b.instrucciones, 800));
-    const conMatch = (b.match === 'false' || b.match === false)
-      ? personas
-      : await matchContraDirectorio(personas);
 
-    return ok(res, { personas: conMatch, total: conMatch.length }, 'Lista interpretada.');
+    // Herencia del tipo de lista: si la persona no trae marcador propio (estado desconocido),
+    // hereda el estado del tipo de la lista (ingresados/fallecidos/trasladados...).
+    const estadoLista = estadoDeTipo(b.tipo);
+    const conEstado = personas.map((p) => {
+      if (estadoLista && (!p.estado || p.estado === 'desconocido')) {
+        return { ...p, estado: estadoLista, estado_heredado: true };
+      }
+      return { ...p, estado_heredado: false };
+    });
+
+    const conMatch = (b.match === 'false' || b.match === false)
+      ? conEstado
+      : await matchContraDirectorio(conEstado);
+
+    return ok(res, { personas: conMatch, total: conMatch.length, tipo_lista: estadoLista }, 'Lista interpretada.');
   } catch (err) {
     if (err.status) return fail(res, err.message, err.status);
     next(err);

@@ -17,11 +17,12 @@ const get = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1
 const url = get('--url');
 const file = get('--file');
 const instrucciones = get('--instrucciones') || undefined;
+const tipo = get('--tipo') || undefined;
 
 const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' };
 
 async function run() {
-  const body = { instrucciones };
+  const body = { instrucciones, tipo };
   if (url) {
     body.image_url = url;
   } else if (file) {
@@ -45,7 +46,8 @@ async function run() {
   const personas = json.data.personas || [];
   console.log(`Transcritas: ${personas.length}\n`);
   for (const p of personas) {
-    console.log(`- ${p.nombre} [${p.estado}] ${p.detalle || ''} ${p.lugar ? '@ ' + p.lugar : ''}`);
+    const her = p.estado_heredado ? ' (heredado)' : '';
+    console.log(`- ${p.nombre} [${p.estado}${her}] ${p.detalle || ''} ${p.lugar ? '@ ' + p.lugar : ''}`);
     for (const c of (p.coincidencias || [])) {
       console.log(`    match: #${c.id} ${c.nombre_completo} (${c.estado}) score=${c.score}`);
     }
