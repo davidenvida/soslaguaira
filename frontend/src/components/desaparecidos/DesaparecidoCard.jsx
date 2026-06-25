@@ -52,6 +52,10 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
   const [zoom, setZoom] = useState(false);
   const [marcando, setMarcando] = useState(false);
   const [errorMarca, setErrorMarca] = useState(false);
+  const [confAbierto, setConfAbierto] = useState(false);
+  const [confNombre, setConfNombre] = useState('');
+  const [confContacto, setConfContacto] = useState('');
+  const [confNota, setConfNota] = useState('');
   const [flagAbierto, setFlagAbierto] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [enviandoFlag, setEnviandoFlag] = useState(false);
@@ -66,14 +70,40 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
   const f = fmtFecha(fecha(persona));
   const yaASalvo = persona.estado === 'a_salvo';
 
-  const marcarASalvo = async () => {
-    if (marcando || yaASalvo) return;
+  const confirmacionValida = confNombre.trim() && confContacto.trim();
+
+  // Confirmar a salvo requiere identificar a quien lo reporta: marcar a salvo
+  // DETIENE la búsqueda, así que dejamos rastro de quién y cómo contactarlo.
+  const confirmarASalvo = async (e) => {
+    e?.preventDefault();
+    if (marcando || yaASalvo || !confirmacionValida) return;
     setMarcando(true);
     setErrorMarca(false);
     try {
-      // La nota se anexa a `notas` en backend (trazabilidad del origen del cambio).
-      await patchIntel(persona.id, { estado: 'a_salvo', nota: 'Marcada a salvo desde el directorio web' });
+      await patchIntel(persona.id, {
+        estado: 'a_salvo',
+        confirmado_por: confNombre.trim(),
+        confirmado_contacto: confContacto.trim(),
+        nota: confNota.trim() || 'Marcada a salvo desde el directorio web',
+      });
       onUpdate?.(persona.id, { estado: 'a_salvo' });
+      setConfAbierto(false);
+    } catch {
+      setErrorMarca(true);
+    } finally {
+      setMarcando(false);
+    }
+  };
+
+  // Revertir: marcar a salvo pudo ser un error -> volver a desaparecido reactiva
+  // la búsqueda.
+  const revertirADesaparecido = async () => {
+    if (marcando) return;
+    setMarcando(true);
+    setErrorMarca(false);
+    try {
+      await patchIntel(persona.id, { estado: 'desaparecido', nota: 'Revertida a desaparecido desde el directorio web' });
+      onUpdate?.(persona.id, { estado: 'desaparecido' });
     } catch {
       setErrorMarca(true);
     } finally {
@@ -170,20 +200,92 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
           )}
         </div>
 
-        {/* Mantiene el directorio vivo: marcar como encontrada / a salvo. */}
+        {/* Mantiene el directorio vivo: marcar como encontrada / a salvo.
+            Pide identificar a quien confirma (detiene la búsqueda). */}
         {!yaASalvo ? (
-          <button
-            type="button"
-            onClick={marcarASalvo}
-            disabled={marcando}
-            className="mt-2 min-h-[44px] w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {marcando ? 'Marcando…' : 'Marcar encontrado / a salvo'}
-          </button>
+          confAbierto ? (
+            <form onSubmit={confirmarASalvo} className="mt-2 space-y-2">
+              <p className="text-[11px] font-semibold text-slate-600">Confirmar que está a salvo</p>
+              <div>
+                <label htmlFor={`conf-nombre-${persona.id}`} className="sr-only">Tu nombre</label>
+                <input
+                  id={`conf-nombre-${persona.id}`}
+                  type="text"
+                  required
+                  value={confNombre}
+                  onChange={(e) => setConfNombre(e.target.value)}
+                  placeholder="Tu nombre *"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label htmlFor={`conf-contacto-${persona.id}`} className="sr-only">Tu contacto o teléfono</label>
+                <input
+                  id={`conf-contacto-${persona.id}`}
+                  type="text"
+                  required
+                  value={confContacto}
+                  onChange={(e) => setConfContacto(e.target.value)}
+                  placeholder="Tu contacto o teléfono *"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label htmlFor={`conf-nota-${persona.id}`} className="sr-only">Nota (opcional)</label>
+                <textarea
+                  id={`conf-nota-${persona.id}`}
+                  rows={2}
+                  value={confNota}
+                  onChange={(e) => setConfNota(e.target.value)}
+                  placeholder="Nota (opcional): dónde, cómo se confirmó…"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={marcando || !confirmacionValida}
+                  className="min-h-[44px] flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {marcando ? 'Confirmando…' : 'Confirmar a salvo'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfAbierto(false)}
+                  className="rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-700"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfAbierto(true)}
+              className="mt-2 min-h-[44px] w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+            >
+              Marcar encontrado / a salvo
+            </button>
+          )
         ) : (
-          <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-center text-xs font-semibold text-emerald-700">
-            ✓ Reportada a salvo
-          </p>
+          <div className="mt-2 space-y-1">
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-center text-xs font-semibold text-emerald-700">
+              ✓ Reportada a salvo
+              {(persona.confirmado_por || persona.confirmadoPor) && (
+                <span className="mt-0.5 block text-[10px] font-normal text-emerald-600">
+                  Confirmado por {persona.confirmado_por || persona.confirmadoPor}
+                </span>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={revertirADesaparecido}
+              disabled={marcando}
+              className="w-full text-center text-[11px] text-slate-400 hover:text-slate-600 hover:underline disabled:opacity-60"
+            >
+              {marcando ? 'Revirtiendo…' : 'Revertir (volver a desaparecido)'}
+            </button>
+          </div>
         )}
         {errorMarca && (
           <p className="mt-1 text-center text-[11px] text-red-600" role="alert">
