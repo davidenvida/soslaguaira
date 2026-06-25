@@ -141,7 +141,7 @@ export default function SubirListaManuscrita({ className = '' }) {
 
   const enviar = async (e) => {
     e.preventDefault();
-    if (!foto || !fuente.trim() || fase === 'enviando') return;
+    if (!datosCompletos || fase === 'enviando') return;
     setFase('enviando');
     try {
       const fd = new FormData();
@@ -151,6 +151,11 @@ export default function SubirListaManuscrita({ className = '' }) {
       // como 'fuente' y también como contexto en 'instrucciones' para la IA.
       fd.append('fuente', fuente.trim());
       fd.append('instrucciones', `Lista de ${tipo} del hospital/fuente: ${fuente.trim()}`);
+      if (fuenteUrl.trim()) fd.append('fuente_url', fuenteUrl.trim());
+      // Datos de quien sube (responsabilidad del origen; solo visible para admin).
+      fd.append('subido_nombre', subNombre.trim());
+      fd.append('subido_apellido', subApellido.trim());
+      fd.append('subido_telefono', subTelefono.trim());
       const res = await interpretar(fd);
       setFilas(normalizarFilas(res));
       setTipoLista(res?.tipo_lista || res?.tipoLista || '');
@@ -289,18 +294,56 @@ export default function SubirListaManuscrita({ className = '' }) {
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
+
+              {/* Enlace a la publicación de origen (opcional) */}
+              <div>
+                <label htmlFor="lista-url" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  4. Enlace de la publicación <span className="font-normal text-slate-400">(opcional)</span>
+                </label>
+                <input
+                  id="lista-url"
+                  type="url"
+                  value={fuenteUrl}
+                  onChange={(e) => setFuenteUrl(e.target.value)}
+                  placeholder="https://x.com/… (de dónde sacaste la lista)"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Datos de quien sube (obligatorios) */}
+              <div>
+                <span className="mb-1.5 block text-sm font-semibold text-slate-700">5. Tus datos</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text" required aria-label="Tu nombre"
+                    value={subNombre} onChange={(e) => setSubNombre(e.target.value)} placeholder="Nombre *"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <input
+                    type="text" required aria-label="Tu apellido"
+                    value={subApellido} onChange={(e) => setSubApellido(e.target.value)} placeholder="Apellido *"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <input
+                  type="tel" required aria-label="Tu teléfono"
+                  value={subTelefono} onChange={(e) => setSubTelefono(e.target.value)} placeholder="Teléfono *"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
               {fase === 'error' && (
                 <p className="text-xs text-red-600" role="alert">No se pudo interpretar la lista. Intenta con otra foto.</p>
               )}
               <button
                 type="submit"
-                disabled={!foto || !fuente.trim() || fase === 'enviando'}
+                disabled={!datosCompletos || fase === 'enviando'}
                 className="min-h-[48px] w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
               >
                 {fase === 'enviando' ? 'Interpretando…' : 'Interpretar lista'}
               </button>
-              {!foto || !fuente.trim() ? (
-                <p className="text-center text-[11px] text-slate-400">Agrega la foto y el hospital/fuente para continuar.</p>
+              {!datosCompletos ? (
+                <p className="text-center text-[11px] text-slate-400">Completa la foto, el hospital/fuente y tus datos para continuar.</p>
               ) : null}
             </form>
           )}
