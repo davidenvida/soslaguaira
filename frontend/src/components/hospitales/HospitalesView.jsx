@@ -44,6 +44,8 @@ export default function HospitalesView() {
     };
   }, [sel]);
 
+  const totalTodos = useMemo(() => hospitales.reduce((a, h) => a + (h.total || 0), 0), [hospitales]);
+
   const filtradas = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t) return personas;
@@ -56,38 +58,27 @@ export default function HospitalesView() {
 
   return (
     <section aria-label="Hospitales" className="mx-auto flex h-full w-full max-w-4xl flex-col px-3 pb-2 pt-3 sm:px-4">
-      <h2 className="text-base font-bold text-slate-900">Hospitales</h2>
+      {/* Título + dropdown de hospital a la derecha, en la misma línea (libera alto). */}
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="shrink-0 text-base font-bold text-slate-900">Hospitales</h2>
+        <label htmlFor="hosp-sel" className="sr-only">Filtrar por hospital</label>
+        <select
+          id="hosp-sel"
+          value={sel}
+          onChange={(e) => setSel(e.target.value)}
+          className="min-w-0 max-w-[70%] rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+        >
+          <option value="todos">Todos{totalTodos ? ` (${totalTodos})` : ''}</option>
+          {hospitales.map((h) => (
+            <option key={h.hospital} value={h.hospital}>
+              {h.hospital}{h.total != null ? ` (${h.total})` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
       <p className="mb-3 text-xs text-slate-500">
         Personas ingresadas, trasladadas o heridas reportadas por los hospitales. Verde = coincide con un reporte del directorio.
       </p>
-
-      {/* Botones de hospital */}
-      <div className="mb-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setSel('todos')}
-          aria-pressed={sel === 'todos'}
-          className={`min-h-[36px] rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-            sel === 'todos' ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'
-          }`}
-        >
-          Todos
-        </button>
-        {hospitales.map((h) => (
-          <button
-            key={h.hospital}
-            type="button"
-            onClick={() => setSel(h.hospital)}
-            aria-pressed={sel === h.hospital}
-            className={`min-h-[36px] rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-              sel === h.hospital ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            {h.hospital}
-            {h.total != null && <span className="ml-1 opacity-70">({h.total})</span>}
-          </button>
-        ))}
-      </div>
 
       {/* Buscador dentro de la lista */}
       <label htmlFor="hosp-q" className="sr-only">Buscar por nombre o cédula</label>
