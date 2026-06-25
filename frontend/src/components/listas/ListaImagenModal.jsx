@@ -19,6 +19,10 @@ export default function ListaImagenModal({ listaId, fuenteUrl, onClose }) {
   const [foto, setFoto] = useState('');
   const closeRef = useRef(null);
   const prevFocus = useRef(null);
+  // onClose vía ref: efecto de montaje una sola vez (si dependiera de [onClose]
+  // recreado por el padre, cada keystroke reenfocaría y el input perdería el foco).
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Zoom / pan
   const [scale, setScale] = useState(1);
@@ -31,14 +35,14 @@ export default function ListaImagenModal({ listaId, fuenteUrl, onClose }) {
     closeRef.current?.focus();
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const onKey = (e) => e.key === 'Escape' && onCloseRef.current();
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
       if (prevFocus.current?.focus) prevFocus.current.focus();
     };
-  }, [onClose]);
+  }, []);
 
   const enviar = async (e) => {
     e.preventDefault();

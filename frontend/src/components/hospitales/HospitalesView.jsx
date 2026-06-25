@@ -196,8 +196,8 @@ export default function HospitalesView({ coincInicial }) {
         <div role="group" aria-label="Filtrar por coincidencia" className="flex gap-2 lg:shrink-0">
           {[
             { v: 'todas', label: 'Todas' },
-            { v: 'con', label: 'Con coincidencia' },
-            { v: 'sin', label: 'Sin coincidencia' },
+            { v: 'con', label: 'Coinciden' },
+            { v: 'sin', label: 'No coinciden' },
           ].map((o) => (
             <button
               key={o.v}

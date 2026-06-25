@@ -20,6 +20,11 @@ function Modal({ children, onClose, label }) {
   const closeRef = useRef(null);
   const prevFocus = useRef(null);
   const dialogRef = useRef(null);
+  // onClose vía ref: el efecto de montaje corre UNA sola vez. Si dependiera de
+  // [onClose] (que el padre recrea en cada render), cada keystroke re-enfocaría
+  // el botón × y los inputs perderían el foco.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     prevFocus.current = document.activeElement;
     closeRef.current?.focus();
@@ -28,7 +33,7 @@ function Modal({ children, onClose, label }) {
     const onKey = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === 'Tab') {
@@ -54,7 +59,7 @@ function Modal({ children, onClose, label }) {
       document.body.style.overflow = prev;
       if (prevFocus.current?.focus) prevFocus.current.focus();
     };
-  }, [onClose]);
+  }, []);
   return createPortal(
     <div
       ref={dialogRef}
