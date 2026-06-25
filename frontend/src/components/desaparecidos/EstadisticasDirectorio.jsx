@@ -89,7 +89,7 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
     { key: 'total', label: 'Reportes', color: 'rose', filtro: '' },
     { key: 'desaparecido', label: 'Desaparecidos', color: 'amber', filtro: 'desaparecido' },
     { key: 'a_salvo', label: 'A salvo', color: 'emerald', filtro: 'a_salvo' },
-    { key: 'fallecido', label: 'Fallecidos', color: 'slate', filtro: 'fallecido' },
+    // 'Fallecidos' no se muestra en el directorio público (privacidad).
     ...(vista.atrapado > 0 ? [{ key: 'atrapado', label: 'Atrapados', color: 'red', filtro: 'atrapado' }] : []),
     { key: 'con_foto', label: 'Con foto', color: 'sky' },
     { key: 'geolocalizados', label: 'En el mapa', color: 'violet' },

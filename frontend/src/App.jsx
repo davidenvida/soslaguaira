@@ -9,6 +9,7 @@ import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecido
 import BuzonSugerencias from './components/ui/BuzonSugerencias'
 import StatsPage from './components/stats/StatsPage'
 import SugerenciasPage from './components/admin/SugerenciasPage'
+import FallecidosPage from './components/admin/FallecidosPage'
 import SubirListaManuscrita from './components/listas/SubirListaManuscrita'
 import VerListasSubidas from './components/listas/VerListasSubidas'
 import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelPersona, registrarVisita } from './api'
@@ -40,6 +41,9 @@ export default function App() {
   }
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/sugerencias')) {
     return <SugerenciasPage />
+  }
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/fallecidos')) {
+    return <FallecidosPage />
   }
 
   return (

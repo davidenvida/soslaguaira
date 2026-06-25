@@ -1,15 +1,18 @@
-// "Ver listas subidas": botón + modal que lista todas las listas manuscritas
-// digitalizadas (fuente, tipo, fecha, total). Al clic en una, muestra su versión
-// digital (tabla nombre/cédula/estado/coincidencia) + thumbnail de la foto
-// original (clic para ampliar). Standalone, mobile-first, viewport-safe.
+// "Ver listas subidas": botón + modal que lista las listas manuscritas
+// digitalizadas. Dos modos:
+//  - PÚBLICO (por defecto, sin token): GET /api/listas/publicas — solo
+//    ingresados/trasladados/heridos, SIN cédula ni coincidencias (entradas:
+//    {nombre, estado, lugar}). Fallecidos nunca aparecen.
+//  - ADMIN (si hay ?token= en la URL): GET /api/listas con X-Admin-Token —
+//    full (cédulas, todos los tipos, coincidencias).
+// Standalone, mobile-first, viewport-safe.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import http, { fotoUrl as toBackendUrl } from '../../api';
 import Lightbox from '../ui/Lightbox';
 import TablaPersonas from './TablaPersonas';
-import { normalizarFilas } from './listasUtils';
+import { normalizarFilas, ESTADO_LISTA } from './listasUtils';
 
-// Ambos endpoints son ADMIN: requieren header X-Admin-Token.
 const tokenDeUrl = () => {
   try {
     return new URLSearchParams(window.location.search).get('token') || '';
@@ -18,11 +21,15 @@ const tokenDeUrl = () => {
   }
 };
 
+const unwrap = (r) => r.data?.data ?? r.data;
 const listar = (token) =>
-  http.get('/listas', { headers: { 'X-Admin-Token': token } }).then((r) => r.data?.data ?? r.data);
-
+  token
+    ? http.get('/listas', { headers: { 'X-Admin-Token': token } }).then(unwrap)
+    : http.get('/listas/publicas').then(unwrap);
 const detalle = (id, token) =>
-  http.get(`/listas/${id}`, { headers: { 'X-Admin-Token': token } }).then((r) => r.data?.data ?? r.data);
+  token
+    ? http.get(`/listas/${id}`, { headers: { 'X-Admin-Token': token } }).then(unwrap)
+    : http.get(`/listas/publicas/${id}`).then(unwrap);
 
 const fmtFecha = (iso) => {
   if (!iso) return '';
@@ -35,6 +42,28 @@ const normalizarListas = (res) => {
   const arr = res?.listas || res?.items || (Array.isArray(res) ? res : res?.data) || [];
   return Array.isArray(arr) ? arr : [];
 };
+
+// Tabla simple para el detalle público (sin cédula ni coincidencias).
+function TablaPublica({ entradas }) {
+  if (!entradas || entradas.length === 0) {
+    return <p className="text-sm text-slate-500">No hay personas en esta lista.</p>;
+  }
+  return (
+    <ul className="divide-y divide-slate-100">
+      {entradas.map((e, i) => (
+        <li key={i} className="flex items-center gap-2 py-2 text-sm">
+          <span className="min-w-0 flex-1 truncate text-slate-800">{e.nombre || '—'}</span>
+          {e.estado && (
+            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${ESTADO_LISTA[e.estado] || ESTADO_LISTA.desconocido}`}>
+              {e.estado}
+            </span>
+          )}
+          {e.lugar && <span className="shrink-0 text-xs text-slate-400">{e.lugar}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Modal({ children, onClose, label }) {
   const closeRef = useRef(null);
@@ -85,17 +114,17 @@ function Modal({ children, onClose, label }) {
 }
 
 export default function VerListasSubidas({ className = '' }) {
+  const token = tokenDeUrl();
+  const esAdmin = !!token;
   const [abierto, setAbierto] = useState(false);
-  const [token, setToken] = useState(tokenDeUrl);
-  const [input, setInput] = useState('');
   const [listas, setListas] = useState([]);
-  const [status, setStatus] = useState('idle'); // idle | loading | ready | error | denied
-  const [sel, setSel] = useState(null); // detalle de la lista seleccionada
+  const [status, setStatus] = useState('idle'); // idle | loading | ready | error
+  const [sel, setSel] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [zoom, setZoom] = useState(false);
 
   useEffect(() => {
-    if (!abierto || !token) return undefined;
+    if (!abierto) return undefined;
     let vivo = true;
     setStatus('loading');
     listar(token)
@@ -105,11 +134,7 @@ export default function VerListasSubidas({ className = '' }) {
           setStatus('ready');
         }
       })
-      .catch((err) => {
-        if (!vivo) return;
-        const code = err?.response?.status;
-        setStatus(code === 401 || code === 403 ? 'denied' : 'error');
-      });
+      .catch(() => vivo && setStatus('error'));
     return () => {
       vivo = false;
     };
@@ -119,9 +144,14 @@ export default function VerListasSubidas({ className = '' }) {
     setCargandoDetalle(true);
     try {
       const res = await detalle(l.id, token);
-      setSel({ ...l, ...res, filas: normalizarFilas(res) });
+      setSel({
+        ...l,
+        ...res,
+        filas: esAdmin ? normalizarFilas(res) : [],
+        entradas: res?.entradas || [],
+      });
     } catch {
-      setSel({ ...l, filas: [], error: true });
+      setSel({ ...l, error: true });
     } finally {
       setCargandoDetalle(false);
     }
@@ -150,37 +180,7 @@ export default function VerListasSubidas({ className = '' }) {
 
       {abierto && (
         <Modal onClose={cerrar} label={sel ? sel.fuente || 'Lista' : 'Listas subidas'}>
-          {!token || status === 'denied' ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (input.trim()) {
-                  setStatus('idle');
-                  setToken(input.trim());
-                }
-              }}
-              className="space-y-2"
-            >
-              <p className="text-xs text-slate-500">
-                {status === 'denied' ? 'Token inválido. Inténtalo de nuevo.' : 'Estas listas contienen datos sensibles. Ingresa el token de administrador.'}
-              </p>
-              <label htmlFor="listas-token" className="sr-only">Token de administrador</label>
-              <input
-                id="listas-token"
-                type="password"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Token de administrador"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
-              />
-              <button
-                type="submit"
-                className="min-h-[44px] w-full rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                Ver listas
-              </button>
-            </form>
-          ) : sel ? (
+          {sel ? (
             <div>
               <button
                 type="button"
@@ -208,8 +208,10 @@ export default function VerListasSubidas({ className = '' }) {
                 <p className="text-sm text-slate-500">Cargando…</p>
               ) : sel.error ? (
                 <p className="text-sm text-red-600">No se pudo cargar el detalle.</p>
-              ) : (
+              ) : esAdmin ? (
                 <TablaPersonas filas={sel.filas} />
+              ) : (
+                <TablaPublica entradas={sel.entradas} />
               )}
             </div>
           ) : (
@@ -234,9 +236,9 @@ export default function VerListasSubidas({ className = '' }) {
                             {[l.tipo, fmtFecha(l.fecha || l.created_at)].filter(Boolean).join(' · ')}
                           </div>
                         </div>
-                        {(l.total != null || l.personas) && (
+                        {l.total != null && (
                           <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600">
-                            {l.total ?? l.personas?.length ?? 0}
+                            {l.total}
                           </span>
                         )}
                         <span className="shrink-0 text-slate-300" aria-hidden="true">›</span>

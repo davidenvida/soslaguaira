@@ -207,9 +207,12 @@ export default function GaleriaDesaparecidos({ onVerEnMapa }) {
               className="w-full min-w-0 rounded-lg border border-slate-300 px-2 py-2 text-base text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
             >
               <option value="">Todos los estados</option>
-              {Object.entries(ESTADO_LABEL).map(([k, label]) => (
-                <option key={k} value={k}>{label}</option>
-              ))}
+              {/* 'fallecido' excluido del filtro público (privacidad). */}
+              {Object.entries(ESTADO_LABEL)
+                .filter(([k]) => k !== 'fallecido')
+                .map(([k, label]) => (
+                  <option key={k} value={k}>{label}</option>
+                ))}
             </select>
           </div>
           <div className="flex-1">
