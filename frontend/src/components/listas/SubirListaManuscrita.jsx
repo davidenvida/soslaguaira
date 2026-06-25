@@ -7,52 +7,9 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import http from '../../api';
 import * as api from '../../api';
-
-const TIPOS = [
-  { value: 'ingresados', label: 'Ingresados' },
-  { value: 'trasladados', label: 'Trasladados' },
-  { value: 'heridos', label: 'Heridos' },
-  { value: 'fallecidos', label: 'Fallecidos' },
-  { value: 'refugiados', label: 'Refugiados' },
-  { value: 'otro', label: 'Otro' },
-];
-
-// Estado individual de cada persona en la lista (puede venir heredado del tipo).
-const ESTADO_LISTA = {
-  ingresado: 'bg-emerald-100 text-emerald-800',
-  trasladado: 'bg-sky-100 text-sky-800',
-  herido: 'bg-amber-100 text-amber-800',
-  fallecido: 'bg-slate-200 text-slate-700',
-  desconocido: 'bg-slate-100 text-slate-500',
-};
-
-// Normaliza data.personas a filas para la tabla. Cada persona trae un array
-// `coincidencias` (0/1/varias) contra la base; tomamos la mejor (mayor score):
-// confianza 'alta' (cédula) = confirmada; 'media' (nombre) = posible; vacío = ninguna.
-const normalizarFilas = (res) => {
-  const personas = res?.personas || res?.data?.personas || (Array.isArray(res) ? res : []);
-  return (Array.isArray(personas) ? personas : []).map((p) => {
-    const coincs = Array.isArray(p.coincidencias) ? p.coincidencias : [];
-    const best = coincs.slice().sort((a, b) => (b.score || 0) - (a.score || 0))[0];
-    const matchTipo = !best ? 'ninguna' : best.confianza === 'alta' ? 'cedula' : 'posible';
-    return {
-      nombre: p.nombre || p.nombre_completo || '—',
-      cedula: p.cedula || '',
-      estado: p.estado || '',
-      estadoHeredado: !!(p.estado_heredado ?? p.estadoHeredado),
-      matchTipo,
-      personaNombre: best?.nombre_completo || '',
-      personaEstado: best?.estado || '',
-      otras: coincs.length > 1 ? coincs.length - 1 : 0,
-    };
-  });
-};
-
-const MATCH = {
-  cedula: { label: 'Confirmada (cédula)', cls: 'bg-emerald-100 text-emerald-800' },
-  posible: { label: 'Posible', cls: 'bg-amber-100 text-amber-800' },
-  ninguna: { label: 'Sin coincidencia', cls: 'bg-slate-100 text-slate-600' },
-};
+import './subirLista.css';
+import { TIPOS, normalizarFilas } from './listasUtils';
+import TablaPersonas from './TablaPersonas';
 
 const interpretar = (formData) =>
   typeof api.interpretarLista === 'function'
@@ -148,20 +105,22 @@ export default function SubirListaManuscrita({ className = '' }) {
 
   return (
     <>
-      <div className={className}>
+      {/* Layout horizontal: botón a la izquierda, explicación a la derecha. */}
+      <div className={`flex flex-wrap items-center gap-3 ${className}`}>
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+          className="sos-lista-btn inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white ring-1 ring-violet-300/60 hover:from-indigo-700 hover:to-violet-700"
         >
-          {/* Documento con flecha de subida: comunica "subir foto de una lista". */}
+          {/* Documento con destello (flecha de subida + brillo): "subir foto de una lista". */}
           <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-7-7zm0 2 5 5h-5V4zM8 15l4-4 4 4h-3v4h-2v-4H8z" />
+            <path d="M18.5 2.2l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z" />
           </svg>
           Subir lista manuscrita
         </button>
-        <p className="mt-1.5 max-w-xs text-xs text-slate-500">
-          ¿Tienes una foto de una lista de un hospital (ingresados, traslados o fallecidos)? Súbela aquí y la convertimos en digital.
+        <p className="min-w-[12rem] flex-1 text-xs text-slate-600">
+          ¿Tienes una foto de una lista de un hospital (ingresados, traslados o fallecidos)? Súbela y la convertimos en digital.
         </p>
       </div>
 
@@ -176,54 +135,7 @@ export default function SubirListaManuscrita({ className = '' }) {
               {filas.length === 0 ? (
                 <p className="text-sm text-slate-500">No se pudo extraer ninguna fila de la imagen.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="text-slate-400">
-                      <tr>
-                        <th className="py-1 pr-2 font-semibold">Nombre</th>
-                        <th className="py-1 pr-2 font-semibold">Cédula</th>
-                        <th className="py-1 font-semibold">Coincidencia</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filas.map((f, i) => {
-                        const m = MATCH[f.matchTipo] || MATCH.ninguna;
-                        return (
-                          <tr key={i} className="align-top">
-                            <td className="py-2 pr-2 text-slate-800">
-                              {f.nombre}
-                              {f.estado && (
-                                <div className="mt-0.5">
-                                  <span
-                                    className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold ${ESTADO_LISTA[f.estado] || ESTADO_LISTA.desconocido}`}
-                                  >
-                                    {f.estado}
-                                  </span>
-                                  {f.estadoHeredado && (
-                                    <span className="ml-1 text-[9px] text-slate-400">según tipo</span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-2 pr-2 tabular-nums text-slate-600">{f.cedula || '—'}</td>
-                            <td className="py-2">
-                              <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${m.cls}`}>
-                                {m.label}
-                              </span>
-                              {f.personaNombre && (
-                                <div className="mt-0.5 text-[11px] text-slate-500">
-                                  {f.personaNombre}
-                                  {f.personaEstado ? ` · ${f.personaEstado}` : ''}
-                                  {f.otras > 0 && ` (+${f.otras})`}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <TablaPersonas filas={filas} />
               )}
               <button
                 type="button"

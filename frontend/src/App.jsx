@@ -10,6 +10,7 @@ import BuzonSugerencias from './components/ui/BuzonSugerencias'
 import StatsPage from './components/stats/StatsPage'
 import SugerenciasPage from './components/admin/SugerenciasPage'
 import SubirListaManuscrita from './components/listas/SubirListaManuscrita'
+import VerListasSubidas from './components/listas/VerListasSubidas'
 import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelPersona, registrarVisita } from './api'
 
 // ============================================================================
@@ -179,6 +180,7 @@ function AppInner({ setDestacarId }) {
       {/* Subir lista manuscrita: acción destacada — cruza listas de hospitales con la base */}
       <div className="z-[500] border-b border-slate-200 bg-slate-50 px-3 py-2">
         <SubirListaManuscrita />
+        <VerListasSubidas className="mt-2" />
       </div>
 
       {/* Contenido */}
