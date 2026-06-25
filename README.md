@@ -83,6 +83,10 @@ Arquitectura objetivo:
    > `PORT` lo inyecta Railway automáticamente; `server.js` ya usa `process.env.PORT`.
    > `backend/db.js` usa `DATABASE_URL` con **SSL** en producción y cae a las variables
    > `DB_*` en desarrollo local. Railway entrega `DATABASE_URL` lista para usar.
+   >
+   > **SSL:** con la URL **pública** (proxy de Railway) el SSL va activo, no toques nada.
+   > Si usas la URL **interna/privada** (`*.railway.internal`, misma red, recomendada),
+   > esa red no usa SSL → añade `DB_SSL=false` para evitar fallos de conexión.
 
 5. **Volume para fotos (obligatorio):** en el servicio backend, *Settings → Volumes →
    añade un Volume montado en* `backend/uploads` (ruta `/app/uploads`). Sin esto, el FS
