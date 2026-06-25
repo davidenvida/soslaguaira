@@ -39,24 +39,10 @@ router.get('/personas', async (req, res, next) => {
     }
     const where = conds.join(' AND ');
 
-    const total = Number((await query(
-      `SELECT count(*)::int AS c FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id WHERE ${where}`,
-      params
-    )).rows[0].c);
-
     const limRaw = toIntOrNull(req.query.limit);
     const pageRaw = toIntOrNull(req.query.page);
     const limit = limRaw === null ? 50 : Math.min(Math.max(limRaw, 1), 500);
     const offset = pageRaw !== null ? Math.max(pageRaw - 1, 0) * limit : Math.max(toIntOrNull(req.query.offset) || 0, 0);
-
-    const pageParams = [...params, limit, offset];
-    const rows = (await query(
-      `SELECT e.nombre, e.cedula, e.estado, e.lugar, l.fuente AS hospital
-       FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id
-       WHERE ${where} ORDER BY l.fuente, e.id
-       LIMIT $${pageParams.length - 1} OFFSET $${pageParams.length}`,
-      pageParams
-    )).rows;
 
     // Indice de desaparecidos/desconocidos reportados (se carga 1 vez por request).
     const desap = (await query(
@@ -66,7 +52,7 @@ router.get('/personas', async (req, res, next) => {
     const porCedula = new Map();
     for (const d of desap) if (d.cedula) porCedula.set(d.cedula, d);
 
-    const items = rows.map((r) => {
+    const conCoincidencia = (r) => {
       let rep = (r.cedula && porCedula.get(r.cedula)) || null;
       if (!rep) rep = desap.find((d) => compareNombres(r.nombre, d.nombre_completo).shared >= 2) || null;
       return {
@@ -75,13 +61,31 @@ router.get('/personas', async (req, res, next) => {
           ? { hay: true, reporte: { id: rep.id, nombre_completo: rep.nombre_completo, estado: rep.estado } }
           : { hay: false, reporte: null },
       };
-    });
+    };
+
+    const filtroCoinc = req.query.coincidencia; // con | sin | todos(default)
+    const SELECT_ROW = `SELECT e.nombre, e.cedula, e.estado, e.lugar, l.fuente AS hospital
+                        FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id WHERE ${where}`;
+
+    let items;
+    let total;
+    if (filtroCoinc === 'con' || filtroCoinc === 'sin') {
+      // Computar coincidencia ANTES de paginar (filtra el set completo, luego pagina en memoria).
+      const all = (await query(`${SELECT_ROW} ORDER BY l.fuente, e.id`, params)).rows.map(conCoincidencia);
+      const filtered = all.filter((it) => (filtroCoinc === 'con' ? it.coincidencia.hay : !it.coincidencia.hay));
+      total = filtered.length;
+      items = filtered.slice(offset, offset + limit);
+    } else {
+      total = Number((await query(`SELECT count(*)::int AS c FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id WHERE ${where}`, params)).rows[0].c);
+      const pageParams = [...params, limit, offset];
+      items = (await query(`${SELECT_ROW} ORDER BY l.fuente, e.id LIMIT $${pageParams.length - 1} OFFSET $${pageParams.length}`, pageParams)).rows.map(conCoincidencia);
+    }
 
     const hospitales = (await query(SQL_HOSPITALES)).rows;
     return ok(
       res,
       { items, total, limit, page: Math.floor(offset / limit) + 1, pages: Math.max(1, Math.ceil(total / limit)), hospitales },
-      `${rows.length} de ${total} pacientes.`
+      `${items.length} de ${total} pacientes.`
     );
   } catch (err) {
     next(err);

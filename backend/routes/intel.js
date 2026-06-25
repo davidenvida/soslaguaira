@@ -329,6 +329,23 @@ router.get('/personas/stats', async (req, res, next) => {
   }
 });
 
+// GET /api/intel/personas/:id -> ficha completa (incluye contacto/reportante/relacion para
+// avisar a la familia en la reunificacion). Fallecidos 404 para no-admin (privacidad).
+router.get('/personas/:id', async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const r = await query('SELECT * FROM personas_intel WHERE id = $1', [id]);
+    if (!r.rows.length) return fail(res, 'Persona no encontrada.', 404);
+    const row = r.rows[0];
+    const esAdmin = process.env.ADMIN_TOKEN && req.get('x-admin-token') === process.env.ADMIN_TOKEN;
+    if (row.estado === 'fallecido' && !esAdmin) return fail(res, 'Persona no encontrada.', 404);
+    return ok(res, row, 'Ficha de persona.');
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/intel/personas/:id
 // Enriquece una fila existente: escribe foto_url y actualiza campos presentes
 // (ultima_ubicacion, parroquia, sector_o_edificio, descripcion, contacto, relacion, edad, estado),
