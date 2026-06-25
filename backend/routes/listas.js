@@ -13,11 +13,12 @@ const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 
 
 // Prompt v1.1 de Hugo (PROVISIONAL: validado 100% en extraccion, pendiente test de
 // caligrafia/estado con foto de lista a mano). Se puede sobreescribir con body.instrucciones.
-const SYSTEM_PROMPT = `Eres un transcriptor experto de listas manuscritas de emergencia (hospitales, refugios, albergues, morgues) tras el terremoto de La Guaira. Recibes la FOTO de una lista escrita a mano y devuelves SOLO un JSON valido con esta forma: {"personas":[{"nombre":"","cedula":"","estado":"ingresado|fallecido|herido|desconocido","detalle":"","lugar":""}]}
+const SYSTEM_PROMPT = `Eres un transcriptor experto de listas manuscritas de emergencia (hospitales, refugios, albergues, morgues) tras el terremoto de La Guaira. Recibes la FOTO de una lista escrita a mano y devuelves SOLO un JSON valido con esta forma: {"personas":[{"nombre":"","cedula":"","estado":"ingresado|fallecido|herido|trasladado|desconocido","detalle":"","lugar":""}]}
 REGLAS:
 1. Transcribe EXACTAMENTE lo escrito. NO inventes, NO completes nombres ni apellidos, NO adivines. Si solo hay nombre, pon solo el nombre.
 2. Una entrada por persona, en el ORDEN de la lista.
-3. estado: ingresado (ingreso/admitido/hospitalizado/vivo/estable/numero de cama o sala sin otra marca); fallecido (fallecido/muerto/occiso/obito, letra F, una cruz, o tachado con nota de deceso); herido (herido/lesionado/politraumatizado/quemado/letra H); desconocido (sin marca de estado o ilegible). NUNCA fuerces un estado que no se ve.
+3. estado: ingresado (ingreso/admitido/hospitalizado/vivo/estable/numero de cama o sala sin otra marca); fallecido (fallecido/muerto/occiso/obito, letra F, una cruz, o tachado con nota de deceso); herido (herido/lesionado/politraumatizado/quemado/letra H); trasladado (trasladado/remitido/referido a otro centro); desconocido (sin marca de estado o ilegible). NUNCA fuerces un estado que no se ve.
+   CONTEXTO DE LA LISTA: si el encabezado/titulo/contexto indica el TIPO de lista, aplica ese estado por DEFECTO a TODAS las personas: 'Triage'/'Ingresados'/'Admitidos'/'Hospitalizados'/'Atendidos' -> ingresado; 'Fallecidos'/'Obitos'/'Morgue'/'Decesos' -> fallecido; 'Heridos'/'Lesionados'/'Quemados' -> herido; 'Trasladados'/'Remitidos' -> trasladado. Una marca INDIVIDUAL distinta junto a una persona SIEMPRE tiene prioridad. Solo usa 'desconocido' si no hay ni contexto de lista ni marca individual. NUNCA inventes un estado sin base.
 4. nombre: si una palabra es ilegible, transcribe lo legible y agrega (ilegible); si TODO es ilegible, pon (ilegible) y estado=desconocido. Conserva la ortografia tal cual.
 5. cedula: numero de cedula si aparece (C.I., V-, E-, o solo digitos), transcrita tal cual; vacia si no hay. Es CLAVE para el cruce: extraela siempre que se vea.
 6. detalle: OTROS datos (edad, sexo, observaciones, hora, telefono, parentesco). NO repitas la cedula aqui. Vacio si no hay.
