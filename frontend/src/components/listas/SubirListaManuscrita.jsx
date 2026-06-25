@@ -119,7 +119,7 @@ export default function SubirListaManuscrita({ className = '' }) {
           </svg>
           Subir lista manuscrita
         </button>
-        <p className="min-w-[12rem] flex-1 text-xs text-slate-600">
+        <p className="hidden min-w-[12rem] flex-1 text-xs text-slate-600 sm:block">
           ¿Tienes una foto de una lista de un hospital (ingresados, traslados o fallecidos)? Súbela y la convertimos en digital.
         </p>
       </div>

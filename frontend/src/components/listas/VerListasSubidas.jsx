@@ -31,6 +31,10 @@ const detalle = (id, token) =>
     ? http.get(`/listas/${id}`, { headers: { 'X-Admin-Token': token } }).then(unwrap)
     : http.get(`/listas/publicas/${id}`).then(unwrap);
 
+// Borrado de lista (solo admin): cascade de entradas + imagen.
+const borrar = (id, token) =>
+  http.delete(`/listas/${id}`, { headers: { 'X-Admin-Token': token } }).then(unwrap);
+
 const fmtFecha = (iso) => {
   if (!iso) return '';
   const d = new Date(iso);
@@ -68,12 +72,35 @@ function TablaPublica({ entradas }) {
 function Modal({ children, onClose, label }) {
   const closeRef = useRef(null);
   const prevFocus = useRef(null);
+  const dialogRef = useRef(null);
   useEffect(() => {
     prevFocus.current = document.activeElement;
     closeRef.current?.focus();
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab') {
+        // Focus-trap: ciclar dentro del diálogo (mismo patrón que Lightbox/Cluster).
+        const nodes = dialogRef.current?.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!nodes || nodes.length === 0) return;
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
@@ -83,6 +110,7 @@ function Modal({ children, onClose, label }) {
   }, [onClose]);
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={label}
@@ -121,6 +149,7 @@ export default function VerListasSubidas({ className = '' }) {
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const [sel, setSel] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [borrando, setBorrando] = useState(false);
   const [zoom, setZoom] = useState(false);
 
   useEffect(() => {
@@ -157,6 +186,22 @@ export default function VerListasSubidas({ className = '' }) {
     }
   };
 
+  const borrarLista = async () => {
+    if (!sel || borrando) return;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`¿Borrar la lista "${sel.fuente || ''}" y todas sus entradas? No se puede deshacer.`)) return;
+    setBorrando(true);
+    try {
+      await borrar(sel.id, token);
+      setListas((prev) => prev.filter((l) => l.id !== sel.id));
+      setSel(null);
+    } catch {
+      setSel((s) => (s ? { ...s, errorBorrar: true } : s));
+    } finally {
+      setBorrando(false);
+    }
+  };
+
   const cerrar = () => {
     setAbierto(false);
     setSel(null);
@@ -170,12 +215,13 @@ export default function VerListasSubidas({ className = '' }) {
       <button
         type="button"
         onClick={() => setAbierto(true)}
+        aria-label="Ver listas subidas"
         className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 ${className}`}
       >
         <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z" />
         </svg>
-        Ver listas subidas
+        <span className="hidden sm:inline">Ver listas subidas</span>
       </button>
 
       {abierto && (
@@ -212,6 +258,22 @@ export default function VerListasSubidas({ className = '' }) {
                 <TablaPersonas filas={sel.filas} />
               ) : (
                 <TablaPublica entradas={sel.entradas} />
+              )}
+
+              {esAdmin && !cargandoDetalle && (
+                <div className="mt-4 border-t border-slate-100 pt-3">
+                  <button
+                    type="button"
+                    onClick={borrarLista}
+                    disabled={borrando}
+                    className="min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    {borrando ? 'Borrando…' : 'Borrar lista'}
+                  </button>
+                  {sel.errorBorrar && (
+                    <span className="ml-2 text-xs text-red-600">No se pudo borrar.</span>
+                  )}
+                </div>
               )}
             </div>
           ) : (

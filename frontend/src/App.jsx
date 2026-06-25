@@ -171,20 +171,29 @@ function AppInner({ setDestacarId }) {
         </div>
       </header>
 
-      {/* Toggle de vista: Directorio | Mapa (control propio, separado del header) */}
-      <div role="group" aria-label="Vista" className="z-[500] flex select-none gap-2 border-b border-slate-200 bg-slate-100 px-3 py-2">
-        <SegBtn activo={vista === 'directorio'} onClick={() => setVista('directorio')}>
-          Directorio
-        </SegBtn>
-        <SegBtn activo={vista === 'mapa'} onClick={() => setVista('mapa')}>
-          Mapa
-        </SegBtn>
+      {/* Banda compacta: toggle (iconos) pegado a la izquierda + mensaje de valor */}
+      <div className="z-[500] flex items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 py-1.5">
+        <div role="group" aria-label="Vista" className="flex shrink-0 select-none gap-1">
+          <IconSegBtn activo={vista === 'directorio'} onClick={() => setVista('directorio')} label="Vista directorio">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
+              <path d="M4 5h2v2H4zm4 0h12v2H8zM4 11h2v2H4zm4 0h12v2H8zM4 17h2v2H4zm4 0h12v2H8z" />
+            </svg>
+          </IconSegBtn>
+          <IconSegBtn activo={vista === 'mapa'} onClick={() => setVista('mapa')} label="Vista mapa">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
+              <path d="M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
+            </svg>
+          </IconSegBtn>
+        </div>
+        <p className="line-clamp-2 min-w-0 flex-1 text-[11px] leading-tight text-slate-600 sm:text-xs">
+          <span className="font-bold text-indigo-700">Reporta y en segundos</span> cruzamos tu reporte con cientos de pacientes ingresados en hospitales.
+        </p>
       </div>
 
-      {/* Subir lista manuscrita: acción destacada — cruza listas de hospitales con la base */}
-      <div className="z-[500] border-b border-slate-200 bg-slate-50 px-3 py-2">
-        <SubirListaManuscrita />
-        <VerListasSubidas className="mt-2" />
+      {/* Banda de acción en UNA fila: Ver listas (izq) + Subir lista + explicación */}
+      <div className="z-[500] flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+        <VerListasSubidas className="shrink-0" />
+        <SubirListaManuscrita className="min-w-0 flex-1" />
       </div>
 
       {/* Contenido */}
@@ -342,6 +351,23 @@ function SegBtn({ activo, onClick, children }) {
         activo
           ? 'bg-slate-900 text-white shadow'
           : 'bg-white text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// Botón de vista icon-only (toggle compacto). Mantiene aria-pressed + aria-label.
+function IconSegBtn({ activo, onClick, label, children }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={activo}
+      aria-label={label}
+      title={label}
+      className={`flex h-10 w-11 items-center justify-center rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+        activo ? 'bg-slate-900 text-white shadow' : 'bg-white text-slate-500 ring-1 ring-slate-300 hover:bg-slate-50'
       }`}
     >
       {children}

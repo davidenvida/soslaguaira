@@ -167,19 +167,16 @@ export default function GaleriaDesaparecidos({ onVerEnMapa }) {
   };
 
   return (
-    <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-6xl p-3 sm:p-4">
-      <header className="mb-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-lg font-bold text-slate-900">Desaparecidos</h2>
-          {total != null && (
-            <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-600">
-              {total} {total === 1 ? 'reporte' : 'reportes'}
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-slate-500">
-          Reportes recopilados de redes y fuentes públicas. {source === 'mock' && '(datos de prueba)'}
-        </p>
+    <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-6xl px-3 pb-3 pt-2 sm:px-4">
+      {/* Cabecera compacta: título + conteo en una línea (sin párrafo). */}
+      <header className="mb-2 flex items-baseline gap-2">
+        <h2 className="text-base font-bold text-slate-900">Desaparecidos</h2>
+        {total != null && (
+          <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-500">
+            {total} {total === 1 ? 'reporte' : 'reportes'}
+          </span>
+        )}
+        {source === 'mock' && <span className="text-[10px] text-slate-400">(datos de prueba)</span>}
       </header>
 
       <EstadisticasDirectorio items={visibles} estado={estado} onEstado={aplicarFiltroStat} />
