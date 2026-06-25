@@ -378,4 +378,22 @@ router.get('/:id', adminGate, async (req, res, next) => {
   }
 });
 
+// DELETE /api/listas/:id  -> elimina una lista y sus entradas (admin). Borra la imagen local.
+router.delete('/:id', adminGate, async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+    const lista = (await query('SELECT foto_url FROM listas_manuscritas WHERE id = $1', [id])).rows[0];
+    if (!lista) return fail(res, 'Lista no encontrada.', 404);
+
+    await query('DELETE FROM listas_manuscritas WHERE id = $1', [id]); // cascade borra lista_entradas
+    if (lista.foto_url && lista.foto_url.startsWith('/uploads/')) {
+      fs.promises.unlink(path.join(UPLOAD_DIR, path.basename(lista.foto_url))).catch(() => {}); // best-effort
+    }
+    return ok(res, { id }, 'Lista eliminada.');
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

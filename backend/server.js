@@ -42,7 +42,7 @@ app.use(helmet({
     },
   },
 }));
-app.use(cors({ origin: CORS_ORIGINS, methods: ['GET', 'POST', 'PATCH', 'OPTIONS'] }));
+app.use(cors({ origin: CORS_ORIGINS, methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'] }));
 app.use(express.json({ limit: '5mb' })); // batches de ingesta de intel
 app.use(express.urlencoded({ extended: true }));
 
