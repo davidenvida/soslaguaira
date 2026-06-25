@@ -344,9 +344,10 @@ router.get('/publicas/:id', async (req, res, next) => {
        FROM listas_manuscritas WHERE id = $1 AND ${SQL_TIPO_PUBLICO}`, [id]
     )).rows[0];
     if (!lista) return fail(res, 'Lista no disponible.', 404);
-    // Vista publica: nombre + estado + lugar. SIN cedula (se usa solo internamente para el match).
+    // Vista publica con info COMPLETA incluyendo cedula (directiva de David: reunificacion manda).
+    // Los fallecidos siguen fuera del publico (SQL_TIPO_PUBLICO ya los excluye arriba).
     const entradas = (await query(
-      'SELECT nombre, estado, lugar FROM lista_entradas WHERE lista_id = $1 ORDER BY id', [id]
+      'SELECT nombre, cedula, estado, detalle, lugar FROM lista_entradas WHERE lista_id = $1 ORDER BY id', [id]
     )).rows;
     return ok(res, { ...lista, entradas }, 'Detalle de lista (publico).');
   } catch (err) {

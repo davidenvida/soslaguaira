@@ -25,7 +25,7 @@ router.get('/', async (req, res, next) => {
 
 // GET /api/hospitales/buscar?q=<nombre|cedula>&hospital=<nombre|todos>
 // Busqueda DIRIGIDA (requiere q): por CEDULA exacta o por NOMBRE (nombre Y apellido, fuzzy).
-// Excluye fallecidos. NO devuelve cedula (privacidad). Es busqueda puntual, no listado masivo.
+// Excluye fallecidos (privados). Info COMPLETA con cedula (directiva de David: reunificacion).
 router.get('/buscar', async (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim();
@@ -39,7 +39,7 @@ router.get('/buscar', async (req, res, next) => {
       conds.push(`l.fuente ILIKE $${params.length}`);
     }
 
-    const SELECT = `SELECT e.nombre, e.estado, e.lugar, l.fuente AS hospital, l.id AS lista_id
+    const SELECT = `SELECT e.nombre, e.cedula, e.estado, e.detalle, e.lugar, l.fuente AS hospital, l.id AS lista_id
                     FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id`;
 
     const ced = normalizarCedula(q);
