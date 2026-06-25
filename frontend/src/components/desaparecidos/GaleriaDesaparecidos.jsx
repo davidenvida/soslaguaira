@@ -207,7 +207,7 @@ export default function GaleriaDesaparecidos() {
 
       {/* Grilla */}
       {visibles.length > 0 && (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {visibles.map((p) => (
             <li key={p.id ?? `${p.nombre_completo}-${p.fecha_reporte}`}>
               <DesaparecidoCard persona={p} onUpdate={handleUpdate} />

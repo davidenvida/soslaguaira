@@ -3,7 +3,7 @@
 // levantado el backend, las llamadas reales fallan con error de red: en ese caso
 // caemos a un mock local para no bloquear el desarrollo del frontend. Si el backend
 // responde con un error real (4xx/5xx), ese error SÍ se propaga al formulario.
-import * as api from '../../api'
+import http, * as api from '../../api'
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -64,6 +64,28 @@ export async function createEdificio(payload) {
   return withMockFallback(
     () => api.createEdificio(payload),
     () => mockCreate('edificios', payload),
+  )
+}
+
+// Crea un reporte en el DIRECTORIO UNIFICADO (intel) con origen='app'.
+// El backend responde { inserted, updated, ids, rejected }. Si el reporte cae en
+// rejected, lanzamos el motivo para que el formulario lo muestre.
+export async function createIntelReporte(payload) {
+  return withMockFallback(
+    async () => {
+      const res = await http.post('/intel/personas', payload)
+      const body = res.data
+      const data =
+        body && typeof body === 'object' && 'success' in body
+          ? (body.success ? body.data : Promise.reject(new Error(body.message || 'Error en la solicitud')))
+          : body
+      const resolved = await data
+      if (resolved && Array.isArray(resolved.rejected) && resolved.rejected.length) {
+        throw new Error(resolved.rejected[0]?.reason || 'El reporte fue rechazado.')
+      }
+      return resolved
+    },
+    () => mockCreate('intel/personas', payload),
   )
 }
 

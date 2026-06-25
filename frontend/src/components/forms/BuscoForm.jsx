@@ -4,19 +4,19 @@ import * as Yup from 'yup'
 import { TextInput, NumberInput, TextArea, SelectInput, SubmitButton, FormStatus } from './FormControls'
 import LocationPicker from './LocationPicker'
 import PhotoUpload from './PhotoUpload'
-import { createPersona, resolveFotoUrl } from './formApi'
+import { createIntelReporte, resolveFotoUrl } from './formApi'
 
+// Estados del DIRECTORIO unificado (enum del backend intel).
 const ESTADOS = [
   { value: 'desaparecido', label: 'Desaparecido' },
-  { value: 'visto_con_vida', label: 'Visto con vida' },
-  { value: 'herido', label: 'Herido' },
-  { value: 'desconocido', label: 'No sé / desconocido' },
+  { value: 'a_salvo', label: 'Ya apareció / a salvo' },
+  { value: 'fallecido', label: 'Fallecido' },
 ]
 
 const schema = Yup.object({
   nombre: Yup.string().trim().required('El nombre es obligatorio'),
   edad: Yup.number().typeError('Edad inválida').integer().min(0).max(120).nullable(),
-  estado: Yup.string().required(),
+  estado: Yup.string().oneOf(['desaparecido', 'a_salvo', 'fallecido']).required(),
   descripcion: Yup.string().trim().max(600, 'Máximo 600 caracteres'),
   direccion: Yup.string().trim().max(200),
   edificio: Yup.string().trim().max(120),
@@ -25,7 +25,7 @@ const schema = Yup.object({
   contacto_telefono: Yup.string()
     .trim()
     .matches(/^[\d+\s()-]{7,20}$/, 'Teléfono inválido')
-    .required('Un teléfono de contacto es obligatorio'),
+    .nullable(),
 })
 
 export default function BuscoForm({ onSuccess }) {
@@ -64,22 +64,24 @@ export default function BuscoForm({ onSuccess }) {
           }
           try {
             const foto_url = await resolveFotoUrl(foto)
-            const data = await createPersona({
-              tipo: 'busco',
-              nombre: values.nombre.trim(),
-              edad: values.edad === '' ? null : Number(values.edad),
+            const sectorEdificio = [values.edificio.trim(), values.piso.trim()]
+              .filter(Boolean)
+              .join(', ')
+            const data = await createIntelReporte({
+              origen: 'app',
+              nombre_completo: values.nombre.trim(),
               estado: values.estado,
+              edad: values.edad === '' ? null : Number(values.edad),
               descripcion: values.descripcion.trim() || null,
-              direccion: values.direccion.trim() || null,
-              edificio: values.edificio.trim() || null,
-              piso: values.piso.trim() || null,
-              contacto_nombre: values.contacto_nombre.trim() || null,
-              contacto_telefono: values.contacto_telefono.trim(),
+              ultima_ubicacion: values.direccion.trim() || null,
+              sector_o_edificio: sectorEdificio || null,
+              reportante: values.contacto_nombre.trim() || null,
+              contacto: values.contacto_telefono.trim() || null,
               lat: coords.lat,
               lng: coords.lng,
               foto_url,
             })
-            setStatus({ type: 'ok', message: 'Reporte enviado. Buscando coincidencias...' })
+            setStatus({ type: 'ok', message: 'Reporte enviado al directorio. ¡Gracias!' })
             resetForm()
             setCoords(null)
             setFoto(null)
@@ -127,7 +129,7 @@ export default function BuscoForm({ onSuccess }) {
 
             <div className="grid grid-cols-2 gap-3">
               <TextInput name="contacto_nombre" label="Tu nombre" placeholder="Quién reporta" />
-              <TextInput name="contacto_telefono" label="Tu teléfono" required placeholder="04xx-xxxxxxx" />
+              <TextInput name="contacto_telefono" label="Tu teléfono" placeholder="Opcional" />
             </div>
 
             <FormStatus status={status} />

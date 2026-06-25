@@ -129,8 +129,8 @@ function AppInner() {
         </div>
       </header>
 
-      {/* Toggle de vista: Directorio | Mapa */}
-      <div role="group" aria-label="Vista" className="z-[500] flex border-b border-slate-200 bg-white shadow-sm">
+      {/* Toggle de vista: Directorio | Mapa (control propio, separado del header) */}
+      <div role="group" aria-label="Vista" className="z-[500] flex select-none gap-2 border-b border-slate-200 bg-slate-100 px-3 py-2">
         <SegBtn activo={vista === 'directorio'} onClick={() => setVista('directorio')}>
           Directorio
         </SegBtn>
@@ -174,7 +174,9 @@ function AppInner() {
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
           <div className="absolute inset-0 overflow-y-auto">
             <GaleriaDesaparecidos />
-            <div className="pb-safe h-2" />
+            {/* Espacio para que la última fila / "cargar más" no queden bajo el
+                botón flotante de Reportar ni el home indicator. */}
+            <div aria-hidden="true" className="pb-safe h-24" />
           </div>
         )}
       </main>
@@ -274,8 +276,10 @@ function SegBtn({ activo, onClick, children }) {
     <button
       onClick={onClick}
       aria-pressed={activo}
-      className={`flex-1 min-h-[44px] px-4 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rose-700 ${
-        activo ? 'bg-rose-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+      className={`flex-1 min-h-[44px] rounded-full px-4 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+        activo
+          ? 'bg-slate-900 text-white shadow'
+          : 'bg-white text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
       }`}
     >
       {children}

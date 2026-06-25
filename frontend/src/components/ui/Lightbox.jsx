@@ -58,6 +58,10 @@ export default function Lightbox({ src, alt = 'Foto', caption, onClose }) {
       aria-modal="true"
       aria-label={alt}
       className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-black/80 p-4"
+      style={{
+        paddingTop: 'calc(1rem + env(safe-area-inset-top))',
+        paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
+      }}
       onClick={onClose}
     >
       <button
@@ -76,7 +80,7 @@ export default function Lightbox({ src, alt = 'Foto', caption, onClose }) {
         src={src}
         alt={alt}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[calc(100dvh-5rem)] max-w-[calc(100vw-2rem)] rounded-lg object-contain shadow-2xl"
+        className="max-h-[calc(100dvh-7rem)] max-w-[calc(100vw-2rem)] rounded-lg object-contain shadow-2xl"
       />
 
       {caption && (
