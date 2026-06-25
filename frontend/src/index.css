@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   Baseline (Bruno) + responsive mobile-first / accesibilidad / polish (Fiona).
+   La gente entra desde el celular en plena emergencia: prioridad legibilidad,
+   areas de toque grandes, nada tapado por el notch ni por la barra de acciones.
+   ========================================================================== */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* Altura dinamica real en moviles (descuenta la barra del navegador).
+   Fallback a 100% arriba para navegadores sin soporte de dvh. */
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Evita rebote/pull-to-refresh que interfiere con el arrastre del mapa */
+  overscroll-behavior: none;
+  /* No reescalar el texto al rotar el telefono */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Quita el flash gris del tap en moviles (lo manejamos con :active/:focus) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* El mapa siempre debe ocupar su contenedor */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+  /* Fuente del mapa coherente con la app */
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ----------------------------------------------------------------------------
+   Controles de Leaflet del MAPA PRINCIPAL: que no queden tapados por el header
+   (arriba) ni por la barra de acciones (abajo). Scope a .sos-map-shell para NO
+   afectar los mini-mapas embebidos del LocationPicker (dentro de los modales).
+   Solo reposiciona los controles nativos; pins y popups los estiliza Gio en
+   components/map/mapLayers.css.
+   -------------------------------------------------------------------------- */
+.sos-map-shell .leaflet-top {
+  /* Debajo del header rojo */
+  top: 64px;
+}
+.sos-map-shell .leaflet-bottom {
+  /* Encima de la barra de acciones + safe area del home indicator */
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}
+
+.leaflet-control-zoom a {
+  /* Areas de toque comodas para el dedo */
+  width: 38px !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  font-size: 20px !important;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* ----------------------------------------------------------------------------
+   Accesibilidad: foco visible solo para navegacion por teclado, sin molestar al
+   usuario de mouse/touch. Contraste alto para que se vea sobre rojo/verde/ambar.
+   -------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Areas de toque minimas (WCAG 2.5.5 ~44px) en botones y enlaces interactivos */
+button,
+[role='button'],
+a {
+  touch-action: manipulation;
+}
+
+/* Scroll suave con inercia en iOS dentro de paneles desplazables */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ----------------------------------------------------------------------------
+   Animacion de entrada del panel deslizable (sube desde abajo en movil).
+   Respeta a quien pidio menos movimiento.
+   -------------------------------------------------------------------------- */
+@keyframes sos-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sos-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.sos-panel-enter {
+  animation: sos-slide-up 0.22s ease-out;
+}
+
+.sos-overlay-enter {
+  animation: sos-fade-in 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Utilidades de safe-area para que el header y la barra de acciones respeten
+   el notch y el home indicator de los telefonos modernos.
+   -------------------------------------------------------------------------- */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Solo lectura para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

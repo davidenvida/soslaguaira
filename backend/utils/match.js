@@ -1,0 +1,89 @@
+// Matching de personas: similitud de nombre (fuzzy) + cercania geografica.
+
+// Distancia Haversine en metros entre dos coordenadas.
+export const haversineMeters = (lat1, lng1, lat2, lng2) => {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+};
+
+const normalize = (s) =>
+  String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // quita acentos
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+// Distancia de Levenshtein entre dos strings.
+const levenshtein = (a, b) => {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const prev = Array(b.length + 1).fill(0).map((_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prevDiag = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j];
+      prev[j] = Math.min(
+        prev[j] + 1,
+        prev[j - 1] + 1,
+        prevDiag + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+      prevDiag = tmp;
+    }
+  }
+  return prev[b.length];
+};
+
+// Similitud de nombre 0..1. Combina similitud global + coincidencia por tokens.
+export const nameSimilarity = (a, b) => {
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (!na || !nb) return 0;
+
+  const maxLen = Math.max(na.length, nb.length);
+  const global = maxLen === 0 ? 0 : 1 - levenshtein(na, nb) / maxLen;
+
+  const ta = new Set(na.split(' '));
+  const tb = nb.split(' ');
+  let hits = 0;
+  for (const t of tb) {
+    for (const u of ta) {
+      const m = Math.max(t.length, u.length);
+      if (m > 0 && 1 - levenshtein(t, u) / m >= 0.8) {
+        hits++;
+        break;
+      }
+    }
+  }
+  const tokenScore = tb.length === 0 ? 0 : hits / Math.max(ta.size, tb.length);
+
+  return Math.max(global, tokenScore);
+};
+
+// Puntaje combinado de match entre persona base y candidato.
+// Pondera nombre (0.7) y cercania (0.3, decae a 0 sobre ~2km).
+export const matchScore = (base, candidate) => {
+  const name = nameSimilarity(base.nombre, candidate.nombre);
+
+  let distanceMeters = null;
+  let proximity = 0;
+  if (
+    base.lat != null && base.lng != null &&
+    candidate.lat != null && candidate.lng != null
+  ) {
+    distanceMeters = haversineMeters(base.lat, base.lng, candidate.lat, candidate.lng);
+    proximity = Math.max(0, 1 - distanceMeters / 2000);
+  }
+
+  const score = name * 0.7 + proximity * 0.3;
+  return { score: Number(score.toFixed(4)), nameSimilarity: Number(name.toFixed(4)), distanceMeters };
+};

@@ -1,0 +1,217 @@
+// Galería de personas desaparecidas (intel real re-hosteado). Lee de la API
+// GET /api/intel/personas via intelPersonas(params); si aún no existe el método
+// o el backend no responde, cae a mock para no quedar en blanco.
+//
+// Contrato (snake_case, confirmado por Fiona): nombre_completo, edad, estado,
+// ultima_ubicacion, parroquia, sector_o_edificio, descripcion, foto_url,
+// fuente_url, fecha_reporte, duplicate_of, fuentes[].
+//   - Mostrar solo duplicate_of === null (el endpoint trae duplicados).
+//   - Filtros server-side: q, estado, parroquia (AND, case-insensitive).
+//   - Respuesta paginada: { items, total, limit, offset, page, pages }.
+//     "cargar más" usa pages (heurística de batch lleno como fallback).
+import { useEffect, useMemo, useRef, useState } from 'react';
+import * as api from '../../api';
+import useDebounce from '../search/useDebounce';
+import DesaparecidoCard from './DesaparecidoCard';
+import { ESTADO_LABEL } from './estados';
+import { mockDesaparecidos } from './mockDesaparecidos';
+
+const LIMIT = 30;
+
+// Parroquias de La Guaira/Vargas como semilla del filtro (se completa con las
+// que aparezcan en los datos reales).
+const PARROQUIAS_SEED = [
+  'Caraballeda', 'Carayaca', 'Carlos Soublette', 'Catia La Mar', 'El Junko',
+  'La Guaira', 'Macuto', 'Maiquetía', 'Naiguatá', 'Urimare',
+];
+
+const noDuplicado = (p) => (p?.duplicate_of ?? p?.duplicateOf ?? null) === null;
+
+const normalizeList = (res) => {
+  if (Array.isArray(res)) return res;
+  return res?.items || res?.data || res?.personas || [];
+};
+
+// Filtro cliente (solo se usa en modo mock; con API el server ya filtra).
+const matchLocal = (p, { q, estado, parroquia }) => {
+  if (estado && p.estado !== estado) return false;
+  if (parroquia && (p.parroquia || '').toLowerCase() !== parroquia.toLowerCase()) return false;
+  if (q) {
+    const nom = (p.nombre_completo || p.nombre || '').toLowerCase();
+    if (!nom.includes(q.toLowerCase())) return false;
+  }
+  return true;
+};
+
+export default function GaleriaDesaparecidos() {
+  const [q, setQ] = useState('');
+  const [estado, setEstado] = useState('');
+  const [parroquia, setParroquia] = useState('');
+  const qDebounced = useDebounce(q, 350);
+
+  const [items, setItems] = useState([]);
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState('loading'); // loading | ready | error
+  const [source, setSource] = useState('api'); // api | mock
+  const [hasMore, setHasMore] = useState(false);
+  const reqId = useRef(0);
+
+  const filtros = useMemo(
+    () => ({ q: qDebounced.trim(), estado, parroquia }),
+    [qDebounced, estado, parroquia],
+  );
+
+  // Resetear a página 1 cuando cambian los filtros.
+  useEffect(() => {
+    setPage(1);
+  }, [filtros]);
+
+  useEffect(() => {
+    const id = ++reqId.current;
+    let cancelado = false;
+    const esPrimeraPagina = page === 1;
+    if (esPrimeraPagina) setStatus('loading');
+
+    const aplicarMock = () => {
+      if (cancelado || id !== reqId.current) return;
+      const filtrados = mockDesaparecidos.filter(noDuplicado).filter((p) => matchLocal(p, filtros));
+      setItems(filtrados);
+      setHasMore(false);
+      setSource('mock');
+      setStatus('ready');
+    };
+
+    const cargar = async () => {
+      if (typeof api.intelPersonas !== 'function') {
+        aplicarMock();
+        return;
+      }
+      try {
+        const res = await api.intelPersonas({ ...filtros, page, limit: LIMIT });
+        if (cancelado || id !== reqId.current) return;
+        const raw = normalizeList(res);
+        const batch = raw.filter(noDuplicado);
+        setItems((prev) => (esPrimeraPagina ? batch : [...prev, ...batch]));
+        // Backend devuelve meta { total, page, pages }: usamos pages para saber
+        // si hay más. Si el meta no viene, caemos a la heurística (página llena).
+        setHasMore(
+          typeof res?.pages === 'number' ? page < res.pages : raw.length === LIMIT,
+        );
+        setSource('api');
+        setStatus('ready');
+      } catch {
+        if (cancelado || id !== reqId.current) return;
+        // Si la primera página falla, mostramos mock; si falla "cargar más",
+        // dejamos lo que ya hay y ocultamos el botón.
+        if (esPrimeraPagina) aplicarMock();
+        else { setHasMore(false); setStatus('ready'); }
+      }
+    };
+
+    cargar();
+    return () => { cancelado = true; };
+  }, [filtros, page]);
+
+  const parroquias = useMemo(() => {
+    const set = new Set(PARROQUIAS_SEED);
+    for (const p of items) if (p.parroquia) set.add(p.parroquia);
+    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+  }, [items]);
+
+  const visibles = items; // ya filtrados (server o mock)
+  const vacio = status === 'ready' && visibles.length === 0;
+
+  return (
+    <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-5xl p-3 sm:p-4">
+      <header className="mb-3">
+        <h2 className="text-lg font-bold text-slate-900">Desaparecidos</h2>
+        <p className="text-xs text-slate-500">
+          Reportes recopilados de redes y fuentes públicas. {source === 'mock' && '(datos de prueba)'}
+        </p>
+      </header>
+
+      {/* Controles */}
+      <div role="search" aria-label="Buscar y filtrar desaparecidos" className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <div className="flex-1">
+          <label htmlFor="desap-q" className="sr-only">Buscar por nombre</label>
+          <input
+            id="desap-q"
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nombre…"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+          />
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label htmlFor="desap-estado" className="sr-only">Filtrar por estado</label>
+            <select
+              id="desap-estado"
+              value={estado}
+              onChange={(e) => setEstado(e.target.value)}
+              className="w-full min-w-0 rounded-lg border border-slate-300 px-2 py-2 text-base text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            >
+              <option value="">Todos los estados</option>
+              {Object.entries(ESTADO_LABEL).map(([k, label]) => (
+                <option key={k} value={k}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label htmlFor="desap-parroquia" className="sr-only">Filtrar por parroquia</label>
+            <select
+              id="desap-parroquia"
+              value={parroquia}
+              onChange={(e) => setParroquia(e.target.value)}
+              className="w-full min-w-0 rounded-lg border border-slate-300 px-2 py-2 text-base text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            >
+              <option value="">Todas las parroquias</option>
+              {parroquias.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Estados accesibles */}
+      <div aria-live="polite" className="min-h-[1.25rem]">
+        {status === 'loading' && (
+          <p className="py-8 text-center text-sm text-slate-500">Cargando reportes…</p>
+        )}
+        {status === 'error' && (
+          <p className="py-8 text-center text-sm text-red-600">No se pudieron cargar los reportes.</p>
+        )}
+        {vacio && (
+          <p className="py-8 text-center text-sm text-slate-500">
+            No hay personas que coincidan con la búsqueda.
+          </p>
+        )}
+      </div>
+
+      {/* Grilla */}
+      {visibles.length > 0 && (
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          {visibles.map((p) => (
+            <li key={p.id ?? `${p.nombre_completo}-${p.fecha_reporte}`}>
+              <DesaparecidoCard persona={p} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {hasMore && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setPage((n) => n + 1)}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Cargar más
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
