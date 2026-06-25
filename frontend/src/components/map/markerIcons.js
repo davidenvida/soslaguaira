@@ -33,5 +33,7 @@ export const atrapadoIcon = (color, urgente) =>
   buildIcon(color, '!', { size: urgente ? 44 : 38, urgente });
 export const edificioIcon = (color) => buildIcon(color, 'E', { size: 38 });
 // Desaparecidos (intel): marcador ROSA fijo, distinto de las otras capas.
+// Si `destacado`, pin más grande con pulso (al navegar desde el directorio).
 export const DESAPARECIDO_COLOR = '#ec4899';
-export const desaparecidoIcon = () => buildIcon(DESAPARECIDO_COLOR, 'D', { size: 34 });
+export const desaparecidoIcon = (destacado = false) =>
+  buildIcon(DESAPARECIDO_COLOR, 'D', { size: destacado ? 46 : 34, urgente: destacado });

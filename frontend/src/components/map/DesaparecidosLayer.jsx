@@ -5,6 +5,10 @@
 // parroquia como fallback). Para que no se tapen, los que comparten exactamente
 // las mismas coordenadas se reparten en un pequeño círculo (determinista por
 // índice). Los puntos únicos se dejan exactos.
+//
+// `destacarId`: al navegar "Ver en el mapa" desde el directorio, el marcador de
+// esa persona se agranda con pulso y abre su popup automáticamente.
+import { useEffect, useRef } from 'react';
 import { LayerGroup, Marker, Popup } from 'react-leaflet';
 import { personaEstado } from './mapColors';
 import { desaparecidoIcon } from './markerIcons';
@@ -48,7 +52,66 @@ function despuntar(lista) {
   return out;
 }
 
-export default function DesaparecidosLayer({ desaparecidos = [], estadoFiltro = 'todos' }) {
+function MarcadorDesaparecido({ d, lat, lng, destacado }) {
+  const ref = useRef(null);
+  // Al volverse el target, abre su popup (Leaflet hace auto-pan para mostrarlo).
+  useEffect(() => {
+    if (destacado && ref.current) ref.current.openPopup();
+  }, [destacado]);
+
+  const est = personaEstado(d.estado);
+  const foto = resolveFoto(d);
+  const nom = nombre(d);
+  const url = fuente(d);
+
+  return (
+    <Marker
+      ref={ref}
+      position={[lat, lng]}
+      icon={desaparecidoIcon(destacado)}
+      zIndexOffset={destacado ? 1000 : 0}
+    >
+      <Popup>
+        <div className="sos-popup">
+          <PopupFoto src={foto} alt={`Foto de ${nom}`} />
+          <div className="sos-popup__body">
+            <span className="sos-popup__badge" style={{ background: est.color }}>
+              {est.label}
+            </span>
+            <div className="sos-popup__title">{nom}</div>
+            {ubicacion(d) && (
+              <div className="sos-popup__row">
+                <span className="sos-popup__label">Última ubicación: </span>
+                {ubicacion(d)}
+              </div>
+            )}
+            {d.parroquia && (
+              <div className="sos-popup__row">
+                <span className="sos-popup__label">Parroquia: </span>
+                {d.parroquia}
+              </div>
+            )}
+            {url && (
+              <div className="sos-popup__row" style={{ marginTop: 8 }}>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                >
+                  <FuenteIcono url={url} />
+                  Ver publicación
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
+export default function DesaparecidosLayer({ desaparecidos = [], estadoFiltro = 'todos', destacarId = null }) {
   const visibles = desaparecidos
     .filter(hasLatLng)
     .filter((d) => estadoFiltro === 'todos' || d.estado === estadoFiltro);
@@ -57,52 +120,15 @@ export default function DesaparecidosLayer({ desaparecidos = [], estadoFiltro = 
 
   return (
     <LayerGroup>
-      {ubicados.map(({ d, lat, lng }) => {
-        const est = personaEstado(d.estado);
-        const foto = resolveFoto(d);
-        const nom = nombre(d);
-        const url = fuente(d);
-        return (
-          <Marker key={d.id} position={[lat, lng]} icon={desaparecidoIcon()}>
-            <Popup>
-              <div className="sos-popup">
-                <PopupFoto src={foto} alt={`Foto de ${nom}`} />
-                <div className="sos-popup__body">
-                  <span className="sos-popup__badge" style={{ background: est.color }}>
-                    {est.label}
-                  </span>
-                  <div className="sos-popup__title">{nom}</div>
-                  {ubicacion(d) && (
-                    <div className="sos-popup__row">
-                      <span className="sos-popup__label">Última ubicación: </span>
-                      {ubicacion(d)}
-                    </div>
-                  )}
-                  {d.parroquia && (
-                    <div className="sos-popup__row">
-                      <span className="sos-popup__label">Parroquia: </span>
-                      {d.parroquia}
-                    </div>
-                  )}
-                  {url && (
-                    <div className="sos-popup__row" style={{ marginTop: 8 }}>
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                      >
-                        <FuenteIcono url={url} />
-                        Ver publicación
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
+      {ubicados.map(({ d, lat, lng }) => (
+        <MarcadorDesaparecido
+          key={d.id}
+          d={d}
+          lat={lat}
+          lng={lng}
+          destacado={destacarId != null && String(d.id) === String(destacarId)}
+        />
+      ))}
     </LayerGroup>
   );
 }

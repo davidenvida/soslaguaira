@@ -44,7 +44,7 @@ const matchLocal = (p, { q, estado, parroquia }) => {
   return true;
 };
 
-export default function GaleriaDesaparecidos() {
+export default function GaleriaDesaparecidos({ onVerEnMapa }) {
   const [q, setQ] = useState('');
   const [estado, setEstado] = useState('');
   const [parroquia, setParroquia] = useState('');
@@ -249,7 +249,7 @@ export default function GaleriaDesaparecidos() {
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {visibles.map((p) => (
             <li key={p.id ?? `${p.nombre_completo}-${p.fecha_reporte}`}>
-              <DesaparecidoCard persona={p} onUpdate={handleUpdate} />
+              <DesaparecidoCard persona={p} onUpdate={handleUpdate} onVerEnMapa={onVerEnMapa} />
             </li>
           ))}
         </ul>

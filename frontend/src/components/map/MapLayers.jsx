@@ -9,14 +9,18 @@ import AtrapadosLayer from './AtrapadosLayer';
 import DesaparecidosLayer from './DesaparecidosLayer';
 
 export default function MapLayers() {
-  const { data, visibility, filters } = useMapData();
+  const { data, visibility, filters, destacarId } = useMapData();
   return (
     <>
       {visibility.edificios && (
         <EdificiosLayer edificios={data.edificios} estadoFiltro={filters.edificios} />
       )}
       {visibility.desaparecidos && (
-        <DesaparecidosLayer desaparecidos={data.desaparecidos} estadoFiltro={filters.desaparecidos} />
+        <DesaparecidosLayer
+          desaparecidos={data.desaparecidos}
+          estadoFiltro={filters.desaparecidos}
+          destacarId={destacarId}
+        />
       )}
       {visibility.personas && (
         <PersonasLayer personas={data.personas} estadoFiltro={filters.personas} />

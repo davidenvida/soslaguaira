@@ -47,7 +47,7 @@ function Placeholder() {
   );
 }
 
-export default function DesaparecidoCard({ persona, onUpdate }) {
+export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
   const [imgError, setImgError] = useState(false);
   const [zoom, setZoom] = useState(false);
   const [marcando, setMarcando] = useState(false);
@@ -69,6 +69,7 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
   const cont = contacto(persona);
   const f = fmtFecha(fecha(persona));
   const yaASalvo = persona.estado === 'a_salvo';
+  const tieneMapa = typeof persona.lat === 'number' && typeof persona.lng === 'number';
 
   const confirmacionValida = confNombre.trim() && confContacto.trim();
 
@@ -199,6 +200,20 @@ export default function DesaparecidoCard({ persona, onUpdate }) {
             </a>
           )}
         </div>
+
+        {/* Saltar al mapa centrado en esta persona (solo si está geolocalizada). */}
+        {tieneMapa && typeof onVerEnMapa === 'function' && (
+          <button
+            type="button"
+            onClick={() => onVerEnMapa(persona)}
+            className="mt-2 inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-100"
+          >
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
+            </svg>
+            Ver en el mapa
+          </button>
+        )}
 
         {/* Mantiene el directorio vivo: marcar como encontrada / a salvo.
             Pide identificar a quien confirma (detiene la búsqueda). */}

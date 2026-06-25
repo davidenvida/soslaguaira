@@ -6,8 +6,8 @@ import PersonSearch from './components/search/PersonSearch'
 import MatchView from './components/search/MatchView'
 import RescueTriage from './components/rescue/RescueTriage'
 import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecidos'
-import ContadorVisitas from './components/ui/ContadorVisitas'
 import BuzonSugerencias from './components/ui/BuzonSugerencias'
+import StatsPage from './components/stats/StatsPage'
 import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelPersona, registrarVisita } from './api'
 
 // ============================================================================
@@ -28,14 +28,22 @@ const PANELS = {
 }
 
 export default function App() {
+  // Persona a destacar en el mapa al usar "Ver en el mapa" desde el directorio.
+  const [destacarId, setDestacarId] = useState(null)
+
+  // Página oculta de estadísticas de visitas (soslaguaira.lat/stats).
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/stats')) {
+    return <StatsPage />
+  }
+
   return (
-    <MapDataProvider>
-      <AppInner />
+    <MapDataProvider destacarId={destacarId}>
+      <AppInner setDestacarId={setDestacarId} />
     </MapDataProvider>
   )
 }
 
-function AppInner() {
+function AppInner({ setDestacarId }) {
   const [vista, setVista] = useState('directorio') // directorio | mapa
   const [panel, setPanel] = useState(null)
   const [mapTarget, setMapTarget] = useState(null) // recentra el mapa al "Ver en mapa"
@@ -98,10 +106,11 @@ function AppInner() {
       if (item?.lat != null && item?.lng != null) {
         setMapTarget({ lat: item.lat, lng: item.lng, zoom: 17 })
       }
+      if (item?.id != null) setDestacarId(item.id)
       setVista('mapa')
       cerrar()
     },
-    [cerrar],
+    [cerrar, setDestacarId],
   )
 
   // Actualizar estado en el triaje de rescate, enrutando segun el origen:
@@ -196,14 +205,15 @@ function AppInner() {
         ) : (
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
           <div className="absolute inset-0 overflow-y-auto">
-            <GaleriaDesaparecidos />
+            <GaleriaDesaparecidos onVerEnMapa={verEnMapa} />
             <BuzonSugerencias className="mx-auto mt-2 w-full max-w-xl px-4 pb-4" />
-            <div className="px-4 pb-2 text-center">
-              <ContadorVisitas />
-            </div>
             <footer className="px-4 pb-6 text-center text-[11px] leading-relaxed text-slate-400">
               <p>
                 Desarrollado por <span className="font-semibold text-slate-500">David Rosales</span>
+                {' · '}
+                <a href="tel:+51974736738" className="hover:underline">+51 974 736 738</a>
+                {' · '}
+                <a href="mailto:davidr@veritydev.com" className="hover:underline">davidr@veritydev.com</a>
               </p>
               <p className="mt-1">
                 Los datos provienen de fuentes y publicaciones de dominio público y se utilizan

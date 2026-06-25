@@ -26,7 +26,7 @@ async function fetchDesaparecidosGeo() {
   );
 }
 
-export function MapDataProvider({ children, pollMs = 20000, useMock = false }) {
+export function MapDataProvider({ children, pollMs = 20000, useMock = false, destacarId = null }) {
   const [data, setData] = useState({ personas: [], atrapados: [], edificios: [], desaparecidos: [] });
   const [source, setSource] = useState('loading'); // 'loading' | 'api' | 'mock'
   const [visibility, setVisibility] = useState(initialVisibility);
@@ -110,8 +110,8 @@ export function MapDataProvider({ children, pollMs = 20000, useMock = false }) {
   );
 
   const value = useMemo(
-    () => ({ data, source, visibility, filters, counts, toggleLayer, setFilter, refresh: load }),
-    [data, source, visibility, filters, counts, toggleLayer, setFilter, load],
+    () => ({ data, source, visibility, filters, counts, toggleLayer, setFilter, refresh: load, destacarId }),
+    [data, source, visibility, filters, counts, toggleLayer, setFilter, load, destacarId],
   );
 
   return <MapDataContext.Provider value={value}>{children}</MapDataContext.Provider>;
