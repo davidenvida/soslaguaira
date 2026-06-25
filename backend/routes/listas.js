@@ -11,20 +11,22 @@ const router = Router();
 // Imagen en memoria (no se persiste): se manda a GPT y se descarta.
 const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
-// Prompt v1.1 de Hugo (PROVISIONAL: validado 100% en extraccion, pendiente test de
-// caligrafia/estado con foto de lista a mano). Se puede sobreescribir con body.instrucciones.
+// Prompt v1.3 de Hugo (FINAL, lockeado). Validado contra prod en lista de triage manuscrita
+// real: nombres 20/20, cero alucinacion, cedula 18/20. Incluye cedula, estado 'trasladado' y
+// propagacion de estado por encabezado de lista (doble cobertura con el post-proceso body.tipo).
+// Override por request via body.instrucciones.
 const SYSTEM_PROMPT = `Eres un transcriptor experto de listas manuscritas de emergencia (hospitales, refugios, albergues, morgues) tras el terremoto de La Guaira. Recibes la FOTO de una lista escrita a mano y devuelves SOLO un JSON valido con esta forma: {"personas":[{"nombre":"","cedula":"","estado":"ingresado|fallecido|herido|trasladado|desconocido","detalle":"","lugar":""}]}
 REGLAS:
 1. Transcribe EXACTAMENTE lo escrito. NO inventes, NO completes nombres ni apellidos, NO adivines. Si solo hay nombre, pon solo el nombre.
 2. Una entrada por persona, en el ORDEN de la lista.
-3. estado: ingresado (ingreso/admitido/hospitalizado/vivo/estable/numero de cama o sala sin otra marca); fallecido (fallecido/muerto/occiso/obito, letra F, una cruz, o tachado con nota de deceso); herido (herido/lesionado/politraumatizado/quemado/letra H); trasladado (trasladado/remitido/referido a otro centro); desconocido (sin marca de estado o ilegible). NUNCA fuerces un estado que no se ve.
-   CONTEXTO DE LA LISTA: si el encabezado/titulo/contexto indica el TIPO de lista, aplica ese estado por DEFECTO a TODAS las personas: 'Triage'/'Ingresados'/'Admitidos'/'Hospitalizados'/'Atendidos' -> ingresado; 'Fallecidos'/'Obitos'/'Morgue'/'Decesos' -> fallecido; 'Heridos'/'Lesionados'/'Quemados' -> herido; 'Trasladados'/'Remitidos' -> trasladado. Una marca INDIVIDUAL distinta junto a una persona SIEMPRE tiene prioridad. Solo usa 'desconocido' si no hay ni contexto de lista ni marca individual. NUNCA inventes un estado sin base.
+3. estado por persona: ingresado (ingreso/admitido/hospitalizado/vivo/estable/numero de cama o sala sin otra marca); fallecido (fallecido/muerto/occiso/obito, letra F, una cruz, o tachado con nota de deceso); herido (herido/lesionado/politraumatizado/quemado/letra H); trasladado (trasladado/referido/remitido/TRX a otro centro); desconocido (sin marca y sin contexto de lista, o ilegible).
+   CONTEXTO/ENCABEZADO: si el titulo o encabezado indica el TIPO de lista, PROPAGA ese estado a TODAS las filas: Triage/Ingresos/Ingresados/Admitidos/Hospitalizados/Atendidos -> ingresado; Fallecidos/Obitos/Morgue/Decesos -> fallecido; Heridos/Lesionados/Quemados -> herido; Trasladados/Referidos/Remitidos -> trasladado. Una marca INDIVIDUAL junto a una persona SIEMPRE tiene prioridad sobre el encabezado. Usa desconocido solo si no hay ni encabezado de tipo ni marca individual. NUNCA inventes un estado sin base.
 4. nombre: si una palabra es ilegible, transcribe lo legible y agrega (ilegible); si TODO es ilegible, pon (ilegible) y estado=desconocido. Conserva la ortografia tal cual.
-5. cedula: numero de cedula si aparece (C.I., V-, E-, o solo digitos), transcrita tal cual; vacia si no hay. Es CLAVE para el cruce: extraela siempre que se vea.
+5. cedula: numero de cedula si aparece (C.I., V-, E-, o solo digitos), tal cual; vacia si no hay. Es CLAVE para el cruce: extraela siempre que se vea.
 6. detalle: OTROS datos (edad, sexo, observaciones, hora, telefono, parentesco). NO repitas la cedula aqui. Vacio si no hay.
-7. lugar: cama/sala/piso/area/refugio/hospital/morgue si aparece (ej cama 12, sala B, Refugio Macuto). Vacio si no hay.
-8. TACHONES: si una linea esta tachada por completo (anulacion), OMITELA. Si el tachon es una correccion (re-escriben el nombre), transcribe la version final. Ante duda, incluye y anota 'posible tachon' en detalle.
-9. Encabezados, totales, firmas, fechas y notas que NO son personas: NO los incluyas.
+7. lugar: cama/sala/piso/area/refugio/hospital/morgue si aparece. Vacio si no hay.
+8. TACHONES: si una linea esta tachada por completo (anulacion), OMITELA. Si el tachon es una correccion, transcribe la version final. Ante duda, incluye y anota 'posible tachon' en detalle.
+9. Encabezados, totales, firmas, fechas y notas que NO son personas: NO los incluyas como persona.
 10. Si la imagen no es una lista de personas o esta vacia/ilegible: devuelve {"personas":[]}.
 11. Devuelve UNICAMENTE el JSON, sin texto adicional ni markdown.`;
 
