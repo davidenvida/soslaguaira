@@ -3,9 +3,25 @@
 // barras de por_dia (últimos 14) y dos tops (por_pais, por_path).
 // Standalone, mobile-first, mismo estilo del sitio.
 import { useEffect, useState } from 'react';
-import * as api from '../../api';
+import http, * as api from '../../api';
 
 const fmt = (n) => (typeof n === 'number' ? n.toLocaleString('es-VE') : '0');
+
+// Token admin de la URL (?token=) para ver la lista de errores reportados.
+const tokenDeUrl = () => {
+  try {
+    return new URLSearchParams(window.location.search).get('token') || '';
+  } catch {
+    return '';
+  }
+};
+
+const fmtFechaHora = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('es-VE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
 
 // Lee la primera clave presente de una lista de candidatas.
 const campo = (obj, ...keys) => {
@@ -118,6 +134,25 @@ export default function StatsPage() {
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [porOrigen, setPorOrigen] = useState(null); // { osint, app } — reportes por origen
+  const [errores, setErrores] = useState(null); // lista de errores reportados (solo con ?token=)
+  const adminToken = tokenDeUrl();
+
+  // Errores reportados (admin): solo si la URL trae ?token=.
+  useEffect(() => {
+    if (!adminToken) return undefined;
+    let vivo = true;
+    http
+      .get('/errores', { headers: { 'X-Admin-Token': adminToken } })
+      .then((r) => {
+        if (!vivo) return;
+        const body = r.data;
+        setErrores(Array.isArray(body) ? body : body?.data?.items || body?.data || []);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [adminToken]);
 
   // Reportes por origen (osint = equipo, app = externos). Llamada extra a intelStats.
   useEffect(() => {
@@ -206,6 +241,32 @@ export default function StatsPage() {
               <div className="mt-1 text-xs font-medium text-amber-700/80">Reportes de usuarios externos</div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Errores reportados (admin, solo con ?token=). */}
+      {adminToken && errores && (
+        <div className="mb-6">
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-bold text-slate-800">Errores reportados</h2>
+            <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-600">{errores.length}</span>
+          </div>
+          {errores.length === 0 ? (
+            <p className="text-xs text-slate-400">No hay errores reportados.</p>
+          ) : (
+            <ul className="space-y-2">
+              {errores.map((e, i) => (
+                <li key={e.id ?? i} className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                  <p className="whitespace-pre-wrap text-sm text-slate-800" style={{ overflowWrap: 'anywhere' }}>{e.texto || ''}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-400">
+                    {e.contacto && <span className="text-slate-500">Contacto: {e.contacto}</span>}
+                    <span>{fmtFechaHora(e.created_at || e.fecha)}</span>
+                    {(e.pais || e.country) && <span>{e.pais || e.country}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

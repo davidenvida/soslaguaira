@@ -9,6 +9,7 @@ import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecido
 import { ESTADO_LABEL } from './components/desaparecidos/estados'
 import HospitalesView from './components/hospitales/HospitalesView'
 import BuzonSugerencias from './components/ui/BuzonSugerencias'
+import ReportarError from './components/ui/ReportarError'
 import StatsPage from './components/stats/StatsPage'
 import SugerenciasPage from './components/admin/SugerenciasPage'
 import FallecidosPage from './components/admin/FallecidosPage'
@@ -184,12 +185,15 @@ function AppInner({ setDestacarId }) {
                 Directorio de desaparecidos · Vargas, Venezuela
               </p>
             </div>
-            <button
-              onClick={() => setPanel('rescate')}
-              className="min-h-[40px] shrink-0 rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white lg:hidden"
-            >
-              Rescatistas
-            </button>
+            <div className="flex shrink-0 items-center gap-1.5 lg:hidden">
+              <ReportarError />
+              <button
+                onClick={() => setPanel('rescate')}
+                className="min-h-[40px] shrink-0 rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              >
+                Rescatistas
+              </button>
+            </div>
           </div>
 
           {/* Separador visual entre título y buscador */}
@@ -238,12 +242,15 @@ function AppInner({ setDestacarId }) {
             </div>
           </div>
 
-          <button
-            onClick={() => setPanel('rescate')}
-            className="hidden min-h-[40px] shrink-0 rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white lg:block"
-          >
-            Rescatistas
-          </button>
+          <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
+            <ReportarError />
+            <button
+              onClick={() => setPanel('rescate')}
+              className="min-h-[40px] shrink-0 rounded bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            >
+              Rescatistas
+            </button>
+          </div>
         </div>
       </header>
 
