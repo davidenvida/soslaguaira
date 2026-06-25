@@ -35,15 +35,15 @@ function Barras({ dias }) {
   const mostrarLabel = (i) => (dias.length - 1 - i) % step === 0;
   return (
     <div
-      className="flex h-40 items-end gap-1.5"
+      className="flex h-40 items-stretch gap-1.5"
       role="img"
       aria-label={`Gráfico de visitas por día, últimos ${dias.length} días`}
     >
       {dias.map((d, i) => (
         <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          <div className="flex w-full flex-1 items-end" title={`${d.label}: ${d.value}`}>
+          <div className="relative w-full flex-1" title={`${d.label}: ${d.value}`}>
             <div
-              className="w-full rounded-t bg-rose-400"
+              className="absolute bottom-0 w-full rounded-t bg-rose-400"
               style={{ height: `${Math.max(2, (d.value / max) * 100)}%` }}
             />
           </div>
@@ -60,12 +60,12 @@ function Barras({ dias }) {
 function HoraBarras({ horas }) {
   const max = Math.max(1, ...horas.map((h) => h.value));
   return (
-    <div className="flex h-32 items-end gap-0.5" role="img" aria-label="Visitas por hora del día">
+    <div className="flex h-32 items-stretch gap-0.5" role="img" aria-label="Visitas por hora del día">
       {horas.map((h, i) => (
         <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          <div className="flex w-full flex-1 items-end" title={`${h.label}h: ${h.value}`}>
+          <div className="relative w-full flex-1" title={`${h.label}h: ${h.value}`}>
             <div
-              className="w-full rounded-t bg-violet-400"
+              className="absolute bottom-0 w-full rounded-t bg-violet-400"
               style={{ height: `${Math.max(2, (h.value / max) * 100)}%` }}
             />
           </div>

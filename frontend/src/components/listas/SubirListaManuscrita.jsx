@@ -120,7 +120,10 @@ export default function SubirListaManuscrita({ className = '' }) {
       const fd = new FormData();
       fd.append('foto', foto);
       fd.append('tipo', tipo);
+      // El backend usa 'instrucciones' para guiar la interpretación; mandamos
+      // ahí la descripción/fuente (y también como 'descripcion' por compatibilidad).
       fd.append('descripcion', descripcion.trim());
+      fd.append('instrucciones', descripcion.trim());
       const res = await interpretar(fd);
       setFilas(normalizarFilas(res));
       setFase('resultado');
@@ -166,7 +169,10 @@ export default function SubirListaManuscrita({ className = '' }) {
                         const m = MATCH[f.matchTipo] || MATCH.ninguna;
                         return (
                           <tr key={i} className="align-top">
-                            <td className="py-2 pr-2 text-slate-800">{f.nombre}</td>
+                            <td className="py-2 pr-2 text-slate-800">
+                              {f.nombre}
+                              {f.estado && <div className="text-[10px] text-slate-400">{f.estado}</div>}
+                            </td>
                             <td className="py-2 pr-2 tabular-nums text-slate-600">{f.cedula || '—'}</td>
                             <td className="py-2">
                               <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${m.cls}`}>
@@ -176,6 +182,7 @@ export default function SubirListaManuscrita({ className = '' }) {
                                 <div className="mt-0.5 text-[11px] text-slate-500">
                                   {f.personaNombre}
                                   {f.personaEstado ? ` · ${f.personaEstado}` : ''}
+                                  {f.otras > 0 && ` (+${f.otras})`}
                                 </div>
                               )}
                             </td>

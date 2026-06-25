@@ -8,6 +8,8 @@ import RescueTriage from './components/rescue/RescueTriage'
 import GaleriaDesaparecidos from './components/desaparecidos/GaleriaDesaparecidos'
 import BuzonSugerencias from './components/ui/BuzonSugerencias'
 import StatsPage from './components/stats/StatsPage'
+import SugerenciasPage from './components/admin/SugerenciasPage'
+import SubirListaManuscrita from './components/listas/SubirListaManuscrita'
 import { listPersonas, matchPersona, listAtrapados, updateAtrapado, updateIntelPersona, registrarVisita } from './api'
 
 // ============================================================================
@@ -31,9 +33,12 @@ export default function App() {
   // Persona a destacar en el mapa al usar "Ver en el mapa" desde el directorio.
   const [destacarId, setDestacarId] = useState(null)
 
-  // Página oculta de estadísticas de visitas (soslaguaira.lat/stats).
+  // Páginas ocultas (soslaguaira.lat/stats y /sugerencias).
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/stats')) {
     return <StatsPage />
+  }
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/sugerencias')) {
+    return <SugerenciasPage />
   }
 
   return (
@@ -169,6 +174,11 @@ function AppInner({ setDestacarId }) {
         <SegBtn activo={vista === 'mapa'} onClick={() => setVista('mapa')}>
           Mapa
         </SegBtn>
+      </div>
+
+      {/* Subir lista manuscrita: acción destacada — cruza listas de hospitales con la base */}
+      <div className="z-[500] border-b border-slate-200 bg-slate-50 px-3 py-2">
+        <SubirListaManuscrita />
       </div>
 
       {/* Contenido */}
