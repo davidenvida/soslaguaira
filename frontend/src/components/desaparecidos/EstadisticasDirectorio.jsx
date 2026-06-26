@@ -1,74 +1,13 @@
-// Panel de estadísticas del directorio (encima del buscador). Números grandes
-// con color por categoría. Lee de api.intelStats() (GET /api/intel/personas/stats)
-// al montar y cada 30s (la data crece en vivo); si el endpoint no responde, cae
-// a contar lo que ya cargó la galería.
-//
-// Cada card de estado es además un FILTRO: al tocarla, filtra el directorio por
-// ese estado (sincronizado con el dropdown de la galería vía `estado`/`onEstado`).
-// 'Reportes' limpia el filtro. 'Con foto' y 'En el mapa' son informativas.
-import { useEffect, useState } from 'react';
-import * as api from '../../api';
+// Hero del directorio (cabecera del match). Recibe `vista` (cifras ya calculadas por
+// GaleriaDesaparecidos) y renderiza las 3 cards simétricas + flechas. Los chips de
+// filtro viven en <ChipsEstado/>: fila bajo el hero en móvil (aquí), rail vertical en
+// desktop (lo monta la galería a la derecha).
+import ChipsEstado from './ChipsEstado';
 
-const POLL_MS = 30000;
 const fmt = (n) => (typeof n === 'number' ? n.toLocaleString('es-VE') : '—');
 
-const porEstado = (s, estado) =>
-  s?.por_estado?.[estado] ?? s?.estados?.[estado] ?? s?.[estado] ?? 0;
-
-// Normaliza la respuesta del endpoint: { total, por_estado:{...}, con_foto, geolocalizados,
-// posibles_coincidencias, personas_listas_hospital }.
-const desdeStats = (s) => ({
-  total: s?.total ?? s?.count ?? 0,
-  desaparecido: porEstado(s, 'desaparecido'),
-  a_salvo: porEstado(s, 'a_salvo'),
-  fallecido: porEstado(s, 'fallecido'),
-  atrapado: porEstado(s, 'atrapado'),
-  con_foto: s?.con_foto ?? s?.conFoto ?? 0,
-  geolocalizados: s?.geolocalizados ?? s?.geocodificados ?? 0,
-  posibles_coincidencias: s?.posibles_coincidencias ?? s?.posiblesCoincidencias ?? 0,
-  personas_listas_hospital: s?.personas_listas_hospital ?? s?.personasListasHospital ?? 0,
-});
-
-// Fallback: cuenta sobre los registros ya cargados (aprox., puede estar filtrado).
-// Las cifras del match (coincidencias / listas) solo vienen del endpoint -> 0 mientras carga.
-const desdeItems = (items = []) => {
-  const v = {
-    total: items.length, desaparecido: 0, a_salvo: 0, fallecido: 0, atrapado: 0,
-    con_foto: 0, geolocalizados: 0, posibles_coincidencias: 0, personas_listas_hospital: 0,
-  };
-  for (const p of items) {
-    if (p.estado === 'desaparecido') v.desaparecido++;
-    else if (p.estado === 'a_salvo') v.a_salvo++;
-    else if (p.estado === 'fallecido') v.fallecido++;
-    else if (p.estado === 'atrapado') v.atrapado++;
-    if (p.foto_url) v.con_foto++;
-    if (typeof p.lat === 'number' && typeof p.lng === 'number') v.geolocalizados++;
-  }
-  return v;
-};
-
-// Clases estáticas (Tailwind no purga lo que no ve escrito completo).
-const COLORS = {
-  rose: 'bg-rose-50 ring-rose-200 text-rose-700',
-  amber: 'bg-amber-50 ring-amber-200 text-amber-700',
-  emerald: 'bg-emerald-50 ring-emerald-200 text-emerald-700',
-  slate: 'bg-slate-100 ring-slate-200 text-slate-700',
-  red: 'bg-red-50 ring-red-200 text-red-700',
-  sky: 'bg-sky-50 ring-sky-200 text-sky-700',
-  violet: 'bg-violet-50 ring-violet-200 text-violet-700',
-};
-
-// Anillo de selección activa (estático por color).
-const ACTIVE = {
-  rose: 'ring-2 ring-rose-500',
-  amber: 'ring-2 ring-amber-500',
-  emerald: 'ring-2 ring-emerald-500',
-  slate: 'ring-2 ring-slate-500',
-  red: 'ring-2 ring-red-500',
-};
-
 export default function EstadisticasDirectorio({
-  items = [],
+  vista = {},
   estado = '',
   onEstado,
   accion = null,
@@ -76,82 +15,17 @@ export default function EstadisticasDirectorio({
   onIrHospitales,
   onIrMapa,
 }) {
-  const [stats, setStats] = useState(null);
-
   // Navegación desde las cards del hero (las cards reemplazan a los tabs). Guard:
   // si la prop no viene, el handler queda undefined y no rompe.
   const irHospitales = typeof onIrHospitales === 'function' ? onIrHospitales : undefined;
   const irMapa = typeof onIrMapa === 'function' ? onIrMapa : undefined;
 
-  // Token de admin en la URL (?token=...). Con token, el endpoint devuelve además el
-  // conteo de fallecidos (gated por X-Admin-Token). El público (sin token) jamás lo ve.
-  const token =
-    typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('token')
-      : null;
-
-  useEffect(() => {
-    if (typeof api.intelStats !== 'function') return undefined;
-    let vivo = true;
-    const cargar = () =>
-      api
-        .intelStats(token || undefined)
-        .then((res) => {
-          if (vivo && res) setStats(desdeStats(res));
-        })
-        .catch(() => {});
-    cargar();
-    const id = setInterval(cargar, POLL_MS);
-    return () => {
-      vivo = false;
-      clearInterval(id);
-    };
-  }, [token]);
-
-  const vista = stats ?? desdeItems(items);
-
-  // Chips de filtro secundarios (debajo del hero). 'Reportes' sube al hero (número izquierdo).
-  // Sin `filtro` => informativa (no clickeable). 'fallecido' no se muestra (privacidad).
-  const chips = [
-    { key: 'desaparecido', label: 'Desaparecidos', color: 'amber', filtro: 'desaparecido' },
-    { key: 'a_salvo', label: 'A salvo', color: 'emerald', filtro: 'a_salvo' },
-    ...(vista.atrapado > 0 ? [{ key: 'atrapado', label: 'Atrapados', color: 'red', filtro: 'atrapado' }] : []),
-    { key: 'con_foto', label: 'Con foto', color: 'sky' },
-    { key: 'geolocalizados', label: 'En el mapa', color: 'violet' },
-  ];
-
   const canFilter = typeof onEstado === 'function';
-
-  const renderChip = ({ key, label, color, filtro }) => {
-    const clickable = canFilter && filtro !== undefined;
-    const activo = clickable && filtro === estado;
-    const cls = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 ring-1 ${COLORS[color]} ${
-      activo ? `${ACTIVE[color] || 'ring-2'} ring-offset-1 ring-offset-emerald-50` : ''
-    } ${clickable ? 'cursor-pointer transition hover:brightness-95' : ''}`;
-    const contenido = (
-      <>
-        <span className="text-base font-extrabold tabular-nums leading-none">{fmt(vista[key])}</span>
-        <span className="text-xs font-medium opacity-80">{label}</span>
-      </>
-    );
-    return (
-      <li key={key} className="shrink-0">
-        {clickable ? (
-          <button type="button" onClick={() => onEstado(filtro)} aria-pressed={activo} className={cls}>
-            {contenido}
-          </button>
-        ) : (
-          <div className={cls}>{contenido}</div>
-        )}
-      </li>
-    );
-  };
-
   // Tocar el número de la izquierda (Reportes) limpia el filtro = ver todos.
   const verTodosActivo = canFilter && estado === '';
 
   return (
-    <div className="-mx-3 mb-3 border-y border-emerald-100 bg-emerald-50 px-3 py-3 sm:-mx-4 sm:px-4">
+    <div className="-mx-3 mb-3 border-y border-emerald-100 bg-emerald-50 px-3 py-3 sm:-mx-4 sm:px-4 lg:mx-0 lg:rounded-2xl lg:border">
       {titulo && <div className="mb-2 flex justify-center sm:justify-start">{titulo}</div>}
 
       {/* HERO del match: 3 cards simétricas [Reportes rojo] → [Coincidencias verde glow] ← [Listas azul].
@@ -226,35 +100,15 @@ export default function EstadisticasDirectorio({
         />
       </div>
 
-      {/* Chips de filtro secundarios (siguen filtrando el directorio). */}
-      {chips.length > 0 && (
-        <ul
-          className="mt-3 flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center"
-          aria-label="Filtros del directorio"
-        >
-          {chips.map(renderChip)}
-        </ul>
-      )}
-
-      {/* Solo admin (con token en la URL): conteo de fallecidos, estilo sobrio/oscuro
-          para que no se confunda con lo público. Clic -> página de fallecidos.
-          Alineado a la izquierda para no quedar bajo el botón flotante "Reportar" (fixed abajo-derecha). */}
-      {token && (
-        <div className="mt-2 flex justify-start">
-          <button
-            type="button"
-            onClick={() => {
-              window.location.href = '/fallecidos?token=' + encodeURIComponent(token);
-            }}
-            aria-label={`${fmt(vista.fallecido)} fallecidos. Abrir reportes de fallecidos (solo administrador)`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100 ring-1 ring-slate-600 transition hover:bg-slate-700"
-          >
-            <span aria-hidden="true" className="text-sm font-extrabold tabular-nums">{fmt(vista.fallecido)}</span>
-            <span aria-hidden="true">Fallecidos</span>
-            <span aria-hidden="true" className="rounded bg-slate-600 px-1 text-[9px] font-bold uppercase tracking-wide">admin</span>
-          </button>
-        </div>
-      )}
+      {/* Chips de filtro: fila bajo el hero SOLO en móvil/tablet. En desktop (lg+) los
+          monta la galería como rail vertical a la derecha (aquí van ocultos). */}
+      <ChipsEstado
+        className="mt-3 lg:hidden"
+        orientacion="row"
+        vista={vista}
+        estado={estado}
+        onEstado={onEstado}
+      />
     </div>
   );
 }

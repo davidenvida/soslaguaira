@@ -1,7 +1,7 @@
 // Tarjeta de una persona desaparecida. Foto (ampliable en lightbox), badge de
 // estado, datos, contacto, enlace al post original y botón para marcarla a salvo.
 // Backend snake_case (verificado); igual leo camelCase como respaldo.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import http, { fotoUrl as toBackendUrl } from '../../api';
 import * as api from '../../api';
 import Lightbox from '../ui/Lightbox';
@@ -94,6 +94,29 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
     persona.revisado_listas_at || persona.revisadoListasAt || null,
   );
   const [errorRevisar, setErrorRevisar] = useState(false);
+  // Overlay efímero "sin coincidencias": cubre la card (sin agrandarla), entra con
+  // fade-in, a los ~2.5s sale con fade-out y se desmonta. `visible` = montado;
+  // `shown` = opacity-100 (false => opacity-0, para animar entrada y salida).
+  const [sinCoincVisible, setSinCoincVisible] = useState(false);
+  const [sinCoincShown, setSinCoincShown] = useState(false);
+  const sinCoincTimers = useRef([]);
+
+  const limpiarSinCoincTimers = () => {
+    sinCoincTimers.current.forEach(clearTimeout);
+    sinCoincTimers.current = [];
+  };
+  // Limpia timers pendientes al desmontar la card.
+  useEffect(() => limpiarSinCoincTimers, []);
+
+  const mostrarSinCoincidencias = () => {
+    limpiarSinCoincTimers();
+    setSinCoincVisible(true);
+    setSinCoincShown(false); // monta transparente -> fade-in en el siguiente frame
+    const tIn = setTimeout(() => setSinCoincShown(true), 30); // fade-in (opacity 0->1)
+    const tOut = setTimeout(() => setSinCoincShown(false), 2500); // fade-out (opacity 1->0)
+    const tQuitar = setTimeout(() => setSinCoincVisible(false), 2900); // desmonta tras la transición
+    sinCoincTimers.current = [tIn, tOut, tQuitar];
+  };
 
   const foto = resolveFoto(persona);
   const nom = nombre(persona);
@@ -169,11 +192,12 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
     setErrorRevisar(false);
     try {
       const data = await revisarListas(persona.id);
-      setResultado({
-        alta: Array.isArray(data?.alta) ? data.alta : [],
-        media: Array.isArray(data?.media) ? data.media : [],
-      });
+      const alta = Array.isArray(data?.alta) ? data.alta : [];
+      const media = Array.isArray(data?.media) ? data.media : [];
+      setResultado({ alta, media });
       setRevisadoAt(data?.revisado_listas_at || data?.revisadoListasAt || new Date().toISOString());
+      // Sin coincidencias: NO expandir la card -> overlay efímero centrado.
+      if (alta.length === 0 && media.length === 0) mostrarSinCoincidencias();
     } catch {
       setErrorRevisar(true);
     } finally {
@@ -182,7 +206,7 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
   };
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+    <article className="relative flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
       {foto && !imgError ? (
         <img
           src={foto}
@@ -293,38 +317,34 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
             </p>
           )}
 
-          {resultado != null && !errorRevisar && (
-            resultado.alta.length === 0 && resultado.media.length === 0 ? (
-              <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-center text-[11px] text-slate-500">
-                Sin coincidencias por ahora.
-              </p>
-            ) : (
-              <div className="mt-2 space-y-2" aria-label="Coincidencias en listas de hospital">
-                {/* ALTA: cédula exacta -> aparece en lista (definitivo). */}
-                {resultado.alta.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-[11px] font-bold text-emerald-700">✓ Aparece en lista</p>
-                    <ul className="space-y-1.5">
-                      {resultado.alta.map((c, i) => (
-                        <CoincidenciaItem key={c.lista_id ?? `alta-${i}`} c={c} tono="alta" />
-                      ))}
-                    </ul>
-                  </div>
-                )}
+          {/* CON coincidencias: contenido real (puede expandir). El caso VACÍO no se
+              renderiza aquí: se muestra como overlay efímero sobre la card (abajo). */}
+          {resultado != null && !errorRevisar && (resultado.alta.length > 0 || resultado.media.length > 0) && (
+            <div className="mt-2 space-y-2" aria-label="Coincidencias en listas de hospital">
+              {/* ALTA: cédula exacta -> aparece en lista (definitivo). */}
+              {resultado.alta.length > 0 && (
+                <div>
+                  <p className="mb-1 text-[11px] font-bold text-emerald-700">✓ Aparece en lista</p>
+                  <ul className="space-y-1.5">
+                    {resultado.alta.map((c, i) => (
+                      <CoincidenciaItem key={c.lista_id ?? `alta-${i}`} c={c} tono="alta" />
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-                {/* MEDIA: nombre+apellido estricto -> posible, verificar. */}
-                {resultado.media.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-[11px] font-bold text-amber-700">Posible — verificar</p>
-                    <ul className="space-y-1.5">
-                      {resultado.media.map((c, i) => (
-                        <CoincidenciaItem key={c.lista_id ?? `media-${i}`} c={c} tono="media" />
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )
+              {/* MEDIA: nombre+apellido estricto -> posible, verificar. */}
+              {resultado.media.length > 0 && (
+                <div>
+                  <p className="mb-1 text-[11px] font-bold text-amber-700">Posible — verificar</p>
+                  <ul className="space-y-1.5">
+                    {resultado.media.map((c, i) => (
+                      <CoincidenciaItem key={c.lista_id ?? `media-${i}`} c={c} tono="media" />
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -472,6 +492,34 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
           </button>
         )}
       </div>
+
+      {/* Overlay efímero "sin coincidencias": cubre la card sin alterar su tamaño y se
+          desvanece solo. pointer-events-none para no bloquear la card. */}
+      {sinCoincVisible && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-red-600/90 px-4 text-center transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+            sinCoincShown ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <svg
+            className="h-6 w-6 text-white/90"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+            <path d="M8 11h6" />
+          </svg>
+          <span className="text-sm font-bold text-white drop-shadow-sm">Sin coincidencias por ahora</span>
+        </div>
+      )}
 
       {zoom && (
         <Lightbox

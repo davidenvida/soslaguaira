@@ -50,3 +50,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Backups de assets originales (no van al repo)
+_originales/
+frontend/_originales/

@@ -14,11 +14,48 @@ import * as api from '../../api';
 import useDebounce from '../search/useDebounce';
 import DesaparecidoCard from './DesaparecidoCard';
 import EstadisticasDirectorio from './EstadisticasDirectorio';
+import ChipsEstado from './ChipsEstado';
 import BusquedaUnificada from './BusquedaUnificada';
 import { ESTADO_LABEL } from './estados';
 import { mockDesaparecidos } from './mockDesaparecidos';
 
 const LIMIT = 30;
+const STATS_POLL_MS = 30000;
+
+// --- Estadísticas del directorio (alimentan el hero y los chips de filtro) ---
+const porEstado = (s, estado) =>
+  s?.por_estado?.[estado] ?? s?.estados?.[estado] ?? s?.[estado] ?? 0;
+
+// Normaliza la respuesta de GET /api/intel/personas/stats.
+const statsDesdeApi = (s) => ({
+  total: s?.total ?? s?.count ?? 0,
+  desaparecido: porEstado(s, 'desaparecido'),
+  a_salvo: porEstado(s, 'a_salvo'),
+  fallecido: porEstado(s, 'fallecido'),
+  atrapado: porEstado(s, 'atrapado'),
+  con_foto: s?.con_foto ?? s?.conFoto ?? 0,
+  geolocalizados: s?.geolocalizados ?? s?.geocodificados ?? 0,
+  posibles_coincidencias: s?.posibles_coincidencias ?? s?.posiblesCoincidencias ?? 0,
+  personas_listas_hospital: s?.personas_listas_hospital ?? s?.personasListasHospital ?? 0,
+});
+
+// Fallback mientras el endpoint no responde: cuenta sobre lo ya cargado (aprox.).
+// Las cifras del match (coincidencias / listas) solo vienen del endpoint -> 0.
+const statsDesdeItems = (items = []) => {
+  const v = {
+    total: items.length, desaparecido: 0, a_salvo: 0, fallecido: 0, atrapado: 0,
+    con_foto: 0, geolocalizados: 0, posibles_coincidencias: 0, personas_listas_hospital: 0,
+  };
+  for (const p of items) {
+    if (p.estado === 'desaparecido') v.desaparecido++;
+    else if (p.estado === 'a_salvo') v.a_salvo++;
+    else if (p.estado === 'fallecido') v.fallecido++;
+    else if (p.estado === 'atrapado') v.atrapado++;
+    if (p.foto_url) v.con_foto++;
+    if (typeof p.lat === 'number' && typeof p.lng === 'number') v.geolocalizados++;
+  }
+  return v;
+};
 
 // Parroquias de La Guaira/Vargas como semilla del filtro (se completa con las
 // que aparezcan en los datos reales).
@@ -80,6 +117,31 @@ export default function GaleriaDesaparecidos({
   const [cargando, setCargando] = useState(false); // hay un fetch en curso (evita cargas dobles)
   const reqId = useRef(0);
   const sentinelaRef = useRef(null);
+
+  // Estadísticas del directorio (hero + chips). Fuente única: se calculan aquí y se
+  // pasan como `vista` al hero y a los chips (fila móvil + rail desktop).
+  const [statsDir, setStatsDir] = useState(null);
+  // Token admin en la URL (?token=): el endpoint añade el conteo de fallecidos (gated).
+  const token =
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') : null;
+
+  useEffect(() => {
+    if (typeof api.intelStats !== 'function') return undefined;
+    let vivo = true;
+    const cargar = () =>
+      api
+        .intelStats(token || undefined)
+        .then((res) => {
+          if (vivo && res) setStatsDir(statsDesdeApi(res));
+        })
+        .catch(() => {});
+    cargar();
+    const id = setInterval(cargar, STATS_POLL_MS);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, [token]);
 
   const filtros = useMemo(
     () => ({ q: qDebounced.trim(), estado, parroquia }),
@@ -175,6 +237,9 @@ export default function GaleriaDesaparecidos({
   const visibles = items; // ya filtrados (server o mock)
   const vacio = status === 'ready' && visibles.length === 0;
 
+  // Cifras para el hero y los chips: endpoint si respondió, si no fallback sobre lo cargado.
+  const vista = statsDir ?? statsDesdeItems(visibles);
+
   // Actualización optimista tras marcar a una persona (p. ej. a salvo): refleja
   // el cambio al instante sin recargar toda la lista.
   const handleUpdate = (id, patch) =>
@@ -194,8 +259,11 @@ export default function GaleriaDesaparecidos({
 
   return (
     <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-6xl px-3 pb-3 pt-2 sm:px-4">
+      <div className="lg:flex lg:items-start lg:gap-4">
+        {/* Columna principal: hero + chips (móvil) + controles + galería. */}
+        <div className="min-w-0 lg:flex-1">
       <EstadisticasDirectorio
-        items={visibles}
+        vista={vista}
         estado={estado}
         onEstado={aplicarFiltroStat}
         onIrHospitales={onIrHospitales}
@@ -313,6 +381,21 @@ export default function GaleriaDesaparecidos({
           )}
         </>
       )}
+        </div>
+
+        {/* Rail vertical de chips de filtro: SOLO desktop (lg+), en el margen blanco
+            derecho. Siguen siendo clickeables como filtros de estado. */}
+        <aside aria-label="Filtros por estado" className="hidden shrink-0 lg:block lg:w-44">
+          <div className="sticky top-2">
+            <ChipsEstado
+              orientacion="col"
+              vista={vista}
+              estado={estado}
+              onEstado={aplicarFiltroStat}
+            />
+          </div>
+        </aside>
+      </div>
     </section>
   );
 }
