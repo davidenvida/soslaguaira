@@ -155,16 +155,19 @@ export default function StatsPage() {
     };
   }, [adminToken]);
 
-  // Fallecidos (admin): privado, solo con ?token=. No aparece en el directorio público.
+  // Fallecidos (admin): privado, solo con ?token=. Provienen de las listas de
+  // hospital (lista_entradas estado=fallecido), no del directorio público.
   useEffect(() => {
     if (!adminToken) return undefined;
     let vivo = true;
     http
-      .get('/intel/personas', { params: { estado: 'fallecido', limit: 500 }, headers: { 'X-Admin-Token': adminToken } })
+      .get('/hospitales/fallecidos', { headers: { 'X-Admin-Token': adminToken } })
       .then((r) => {
         if (!vivo) return;
         const body = r.data;
-        setFallecidos(Array.isArray(body) ? body : body?.data?.items || body?.data || body?.items || []);
+        const items =
+          body?.data?.items || body?.items || (Array.isArray(body?.data) ? body.data : Array.isArray(body) ? body : []);
+        setFallecidos(items);
       })
       .catch(() => {});
     return () => {
@@ -269,21 +272,18 @@ export default function StatsPage() {
             <h2 className="text-sm font-bold text-slate-800">Fallecidos</h2>
             <span className="shrink-0 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-700">{fallecidos.length}</span>
           </div>
-          <p className="mb-2 text-[11px] text-slate-400">Vista privada · no aparece en el directorio público.</p>
+          <p className="mb-2 text-[11px] text-slate-400">Vista privada · provienen de las listas de hospital, no del directorio público.</p>
           {fallecidos.length === 0 ? (
             <p className="text-xs text-slate-400">No hay registros.</p>
           ) : (
             <ul className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200">
               {fallecidos.map((p, i) => (
-                <li key={p.id ?? i} className="px-4 py-3">
-                  <div className="text-sm font-semibold text-slate-900">{p.nombre_completo || p.nombre || 'Sin nombre'}</div>
+                <li key={p.lista_id ? `${p.lista_id}-${i}` : i} className="px-4 py-3">
+                  <div className="text-sm font-semibold text-slate-900">{p.nombre || p.nombre_completo || 'Sin nombre'}</div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
-                    {(p.ultima_ubicacion || p.parroquia) && <span>{p.ultima_ubicacion || p.parroquia}</span>}
-                    {p.fuente_url && (
-                      <a href={p.fuente_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-600 hover:underline">
-                        Fuente
-                      </a>
-                    )}
+                    {p.cedula && <span>C.I. {p.cedula}</span>}
+                    {p.fuente && <span>{p.fuente}</span>}
+                    {p.fecha && <span>{new Date(p.fecha).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
                   </div>
                 </li>
               ))}

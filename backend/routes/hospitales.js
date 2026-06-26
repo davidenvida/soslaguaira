@@ -5,6 +5,7 @@ import { toIntOrNull } from '../utils/validate.js';
 import { nombresCoinciden } from '../utils/match.js';
 import { SQL_TIPO_PUBLICO } from '../utils/listasTipo.js';
 import { buscarEnHospitales } from '../utils/busqueda.js';
+import { adminGate } from '../middleware/adminGate.js';
 
 const router = Router();
 
@@ -99,6 +100,27 @@ router.get('/personas', async (req, res, next) => {
       { items, total, limit, page: Math.floor(offset / limit) + 1, pages: Math.max(1, Math.ceil(total / limit)), hospitales },
       `${items.length} de ${total} pacientes.`
     );
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/hospitales/fallecidos  (ADMIN, sensible: nombres de fallecidos)
+// Los fallecidos NO viven en personas_intel (ahi hay 0): estan en lista_entradas con estado
+// fallecido. Devuelve la lista para la vista admin de /stats. Gate X-Admin-Token.
+router.get('/fallecidos', adminGate, async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT e.nombre, e.cedula, e.estado, e.lista_id, l.fuente, l.created_at AS fecha
+       FROM lista_entradas e JOIN listas_manuscritas l ON l.id = e.lista_id
+       WHERE e.estado ~* 'fallec|muert|occis|obito|morgue|deces'
+       ORDER BY l.fuente, e.nombre`
+    );
+    const items = rows.map((r) => ({
+      nombre: r.nombre, cedula: r.cedula, fuente: r.fuente,
+      lista_id: r.lista_id, fecha: r.fecha, estado: r.estado,
+    }));
+    return ok(res, { total: items.length, items }, `${items.length} fallecido(s) en listas de hospital.`);
   } catch (err) {
     next(err);
   }
