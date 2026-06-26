@@ -186,14 +186,14 @@ function AppInner({ setDestacarId }) {
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Encabezado: título | separador | buscador + filtros (estado/parroquia a la derecha) */}
       <header className="pt-safe z-[500] bg-red-700 text-white shadow-md">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-3 py-2 lg:flex-row lg:items-center">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-3 py-1 lg:flex-row lg:items-center">
           {/* Título + Rescatistas */}
           <div className="flex items-center justify-between gap-2 lg:shrink-0">
             <div className="flex min-w-0 items-center gap-2">
               <img
-                src="/logo.png"
+                src="/logo.webp"
                 alt="SOS La Guaira"
-                className="h-9 w-auto shrink-0 sm:h-10"
+                className="h-12 w-auto shrink-0 sm:h-16"
               />
               <div className="min-w-0">
                 <h1 className="truncate text-base font-bold leading-tight sm:text-lg">SOS La Guaira</h1>
