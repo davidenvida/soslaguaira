@@ -214,8 +214,9 @@ router.get('/personas', async (req, res, next) => {
     }
     if (q && String(q).trim()) {
       params.push(`%${String(q).trim()}%`);
+      const n = params.length;
       conds.push(
-        `(nombre_completo ILIKE $${params.length} OR descripcion ILIKE $${params.length} OR ultima_ubicacion ILIKE $${params.length} OR sector_o_edificio ILIKE $${params.length})`
+        `(unaccent(nombre_completo) ILIKE unaccent($${n}) OR unaccent(descripcion) ILIKE unaccent($${n}) OR unaccent(ultima_ubicacion) ILIKE unaccent($${n}) OR unaccent(sector_o_edificio) ILIKE unaccent($${n}))`
       );
     }
 
