@@ -6,7 +6,7 @@
 //    una alerta NEUTRAL ('tenemos informacion, te contactaremos'), sin afirmar el fallecimiento.
 //  - ingresado/trasladado/herido: alerta informativa (hospital + estado) -> humano confirma.
 
-const esFallecido = (e) => /fallec|muert|occis|obito|morgue|deces/i.test(`${e.estado || ''} ${e.tipo || ''}`);
+export const esFallecido = (e) => /fallec|muert|occis|obito|morgue|deces/i.test(`${e.estado || ''} ${e.tipo || ''}`);
 
 const alertaInformativa = (e) => {
   const fecha = e.created_at ? new Date(e.created_at).toISOString().slice(0, 10) : '';

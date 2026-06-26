@@ -7,6 +7,7 @@ import {
 } from '../utils/validate.js';
 import { buildGeocoder } from '../utils/geocode.js';
 import { evaluarAlertas } from '../utils/alertas.js';
+import { cruzarReporteConListas, contarPersonasListasHospital, contarPosiblesCoincidencias } from '../utils/cruceListas.js';
 import { adminGate } from '../middleware/adminGate.js';
 
 const router = Router();
@@ -217,6 +218,63 @@ router.post('/personas', async (req, res, next) => {
   }
 });
 
+// Extrae el status id de una URL de tweet (x.com/twitter.com), robusto a query params y dominio.
+const STATUS_RE = /status(?:es)?\/(\d+)/i;
+const statusIdDe = (url) => { const m = STATUS_RE.exec(String(url || '')); return m ? m[1] : null; };
+
+// POST /api/intel/personas/existencia  body { fuente_urls:[...] } (acepta tambien { urls:[...] })
+// Anti-duplicados BATCH (read-only, barato): por cada URL extrae el status id del tweet y lo
+// compara contra el status id de los fuente_url YA guardados (NO igualdad de string cruda ->
+// robusto a x.com/twitter.com/?s=...). URLs sin status id (ej reportaven) caen a igualdad exacta.
+// Respuesta: { resultados:[{fuente_url, status_id, existe, ids:[]}], total, existentes, nuevos }.
+router.post('/personas/existencia', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const urls = Array.isArray(b.fuente_urls) ? b.fuente_urls
+      : Array.isArray(b.urls) ? b.urls : null;
+    if (!urls) return fail(res, "Enviar 'fuente_urls' (o 'urls') como arreglo.");
+    if (!urls.length) return ok(res, { resultados: [], total: 0, existentes: 0, nuevos: 0 }, 'Sin URLs.');
+    if (urls.length > 5000) return fail(res, 'Maximo 5000 URLs por llamada.');
+
+    // Carga unica de los fuente_url guardados (read-only). Indexa por status id y por URL cruda.
+    const saved = (await query(
+      'SELECT id, fuente_url FROM personas_intel WHERE fuente_url IS NOT NULL'
+    )).rows;
+    const porStatus = new Map();
+    const porUrl = new Map();
+    for (const row of saved) {
+      const u = String(row.fuente_url).trim();
+      if (!porUrl.has(u)) porUrl.set(u, []);
+      porUrl.get(u).push(row.id);
+      const sid = statusIdDe(u);
+      if (sid) {
+        if (!porStatus.has(sid)) porStatus.set(sid, []);
+        porStatus.get(sid).push(row.id);
+      }
+    }
+
+    let existentes = 0;
+    const resultados = urls.map((raw) => {
+      const fuente_url = (typeof raw === 'string' ? raw : String(raw || '')).trim();
+      const status_id = statusIdDe(fuente_url);
+      let ids = [];
+      if (status_id && porStatus.has(status_id)) ids = porStatus.get(status_id);
+      else if (fuente_url && porUrl.has(fuente_url)) ids = porUrl.get(fuente_url);
+      const existe = ids.length > 0;
+      if (existe) existentes += 1;
+      return { fuente_url, status_id, existe, ids };
+    });
+
+    return ok(
+      res,
+      { resultados, total: resultados.length, existentes, nuevos: resultados.length - existentes },
+      `${existentes} ya existe(n), ${resultados.length - existentes} nuevo(s).`
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/intel/personas?estado=&parroquia=&q=&limit=&offset=&incluir_duplicados=
 // Por defecto excluye los registros ya marcados como duplicados (duplicate_of NOT NULL),
 // para que la galeria no muestre la misma persona dos veces. ?incluir_duplicados=true los trae.
@@ -375,7 +433,27 @@ router.get('/personas/stats', async (req, res, next) => {
       if (geocodable) geolocalizados += 1;
     }
 
-    return ok(res, { total: rows.length, por_estado, por_origen, con_foto, geolocalizados }, 'Estadisticas del directorio.');
+    // Feature match reportes<->listas: pacientes en listas de hospital y reportes con >=1 match.
+    // personas_listas_hospital = SQL directo; posibles_coincidencias = cacheado (TTL, conteo O(n*m)).
+    const [personas_listas_hospital, posibles_coincidencias] = await Promise.all([
+      contarPersonasListasHospital(query),
+      contarPosiblesCoincidencias(query),
+    ]);
+
+    // SOLO admin (X-Admin-Token): incluye el conteo de fallecidos. Sin token, queda en 0 (privacidad
+    // intacta, salida identica a hoy). El total NO cambia (sigue siendo el de no-fallecidos).
+    const esAdmin = process.env.ADMIN_TOKEN && req.get('x-admin-token') === process.env.ADMIN_TOKEN;
+    if (esAdmin) {
+      por_estado.fallecido = Number(
+        (await query("SELECT count(*)::int AS c FROM personas_intel WHERE duplicate_of IS NULL AND estado = 'fallecido'")).rows[0].c
+      );
+    }
+
+    return ok(
+      res,
+      { total: rows.length, por_estado, por_origen, con_foto, geolocalizados, personas_listas_hospital, posibles_coincidencias },
+      'Estadisticas del directorio.'
+    );
   } catch (err) {
     next(err);
   }
@@ -544,6 +622,44 @@ router.post('/personas/:id/flag', async (req, res, next) => {
     );
     if (!rows.length) return fail(res, 'Ficha no encontrada.', 404);
     return ok(res, rows[0], 'Ficha marcada para revision. Un humano la revisara.', 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/intel/personas/:id/revisar-listas  { por? }
+// Cruza ESTE reporte contra las listas de hospital (reunificacion). Estampa revisado_listas_at
+// (+revisado_listas_por si viene 'por') y devuelve { revisado_listas_at, alta, media }.
+//  - alta = coincidencias por cedula exacta (definitivo).
+//  - media = nombre+apellido estricto (candidato a verificar).
+// Fallecidos quedan fuera del payload (van a coincidencias_sensibles, cola admin).
+router.post('/personas/:id/revisar-listas', async (req, res, next) => {
+  try {
+    const id = toIntOrNull(req.params.id);
+    if (id === null) return fail(res, 'ID invalido.');
+
+    const persona = (await query(
+      'SELECT id, nombre_completo, cedula FROM personas_intel WHERE id = $1', [id]
+    )).rows[0];
+    if (!persona) return fail(res, 'Reporte no encontrado.', 404);
+
+    const por = cleanStr((req.body || {}).por, 200);
+    const upd = (await query(
+      `UPDATE personas_intel
+         SET revisado_listas_at = now(),
+             revisado_listas_por = COALESCE($2, revisado_listas_por)
+       WHERE id = $1
+       RETURNING revisado_listas_at`,
+      [id, por]
+    )).rows[0];
+
+    const { alta, media } = await cruzarReporteConListas(query, persona);
+
+    return ok(
+      res,
+      { revisado_listas_at: upd.revisado_listas_at, alta, media },
+      `${alta.length} coincidencia(s) definitiva(s), ${media.length} por verificar.`
+    );
   } catch (err) {
     next(err);
   }
