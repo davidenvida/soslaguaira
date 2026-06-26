@@ -92,8 +92,36 @@ export const intelPersonas = (params = {}) =>
 export const updateIntelPersona = (id, payload) =>
   http.patch(`/intel/personas/${id}`, payload).then(unwrap)
 
-// Estadísticas del directorio: { total, por_estado, con_foto, ... } para el panel vistoso.
-export const intelStats = () => http.get('/intel/personas/stats').then(unwrap)
+// Estadísticas del directorio: { total, por_estado, con_foto, geolocalizados,
+// personas_listas_hospital, posibles_coincidencias } para la cabecera de match.
+// Con adminToken (X-Admin-Token) el backend incluye además el conteo de
+// fallecidos (privado: el público no lo recibe).
+export const intelStats = (adminToken) =>
+  http
+    .get('/intel/personas/stats', adminToken ? { headers: { 'X-Admin-Token': adminToken } } : undefined)
+    .then(unwrap)
+
+// Solicitud de retiro (takedown) de una ficha del directorio.
+export const flagIntelPersona = (id, payload = {}) =>
+  http.post(`/intel/personas/${id}/flag`, payload).then(unwrap)
+
+// Revisar una ficha del directorio contra las listas manuscritas de hospital.
+// Marca la fecha/hora de la última revisión (revisado_listas_at) y devuelve las
+// coincidencias separadas por confianza (regla de match de Hugo):
+//   { revisado_listas_at,
+//     alta:  [ ... ],   // cédula exacta (definitivo)
+//     media: [ ... ] }  // nombre+apellido estricto (candidato a revisar)
+// Cada item: { lista_id, fuente, tipo, entrada:{ nombre, estado, lugar }, score }.
+// Las entradas de fallecidos NO vienen en este payload público (van a cola admin).
+export const revisarEnListas = (id, payload = {}) =>
+  http.post(`/intel/personas/${id}/revisar-listas`, payload).then(unwrap)
+
+// Interpreta una lista manuscrita (foto) con IA. Recibe un FormData (campo 'foto'
+// + tipo/fuente/...). Devuelve { personas, total, tipo_lista, lista_id, foto_url }.
+export const interpretarLista = (formData) =>
+  http
+    .post('/listas/interpretar', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then(unwrap)
 
 // Analítica de visitas (sin cookies). Beacon fire-and-forget; ignora errores.
 export const registrarVisita = (payload = {}) =>

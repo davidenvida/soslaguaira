@@ -199,47 +199,43 @@ function AppInner({ setDestacarId }) {
           {/* Separador visual entre título y buscador */}
           <div aria-hidden="true" className="hidden w-px self-stretch bg-white/25 lg:block" />
 
-          {/* Buscador (grande) + filtros estado/parroquia a la derecha */}
-          <div role="search" aria-label="Buscar desaparecidos" className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1">
-              <label htmlFor="hero-q" className="sr-only">Busca a tu familiar por nombre o cédula</label>
-              <input
-                id="hero-q"
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Busca a tu familiar por nombre o cédula…"
-                className="w-full rounded-lg border border-white/30 bg-white px-3 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
-              />
-            </div>
-            <div className="flex gap-2 sm:shrink-0">
-              <label htmlFor="hero-estado" className="sr-only">Filtrar por estado</label>
-              <select
-                id="hero-estado"
-                value={estadoFiltro}
-                onChange={(e) => setEstadoFiltro(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-white/30 bg-white px-2 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-white sm:flex-none"
-              >
-                <option value="">Estado</option>
-                {Object.entries(ESTADO_LABEL)
-                  .filter(([k]) => k !== 'fallecido')
-                  .map(([k, label]) => (
-                    <option key={k} value={k}>{label}</option>
-                  ))}
-              </select>
-              <label htmlFor="hero-parroquia" className="sr-only">Filtrar por parroquia</label>
-              <select
-                id="hero-parroquia"
-                value={parroquiaFiltro}
-                onChange={(e) => setParroquiaFiltro(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-white/30 bg-white px-2 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-white sm:flex-none"
-              >
-                <option value="">Parroquia</option>
-                {PARROQUIAS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
+          {/* Buscador + Estado + Parroquia en UNA sola fila/banda compacta. */}
+          <div role="search" aria-label="Buscar desaparecidos" className="flex min-w-0 flex-1 items-center gap-2">
+            <label htmlFor="hero-q" className="sr-only">Busca a tu familiar por nombre o cédula</label>
+            <input
+              id="hero-q"
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Busca por nombre o cédula…"
+              className="min-w-0 flex-[2] rounded-lg border border-white/30 bg-white px-3 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white sm:flex-1"
+            />
+            <label htmlFor="hero-estado" className="sr-only">Filtrar por estado</label>
+            <select
+              id="hero-estado"
+              value={estadoFiltro}
+              onChange={(e) => setEstadoFiltro(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-white/30 bg-white px-2 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-white sm:flex-none"
+            >
+              <option value="">Estado</option>
+              {Object.entries(ESTADO_LABEL)
+                .filter(([k]) => k !== 'fallecido')
+                .map(([k, label]) => (
+                  <option key={k} value={k}>{label}</option>
                 ))}
-              </select>
-            </div>
+            </select>
+            <label htmlFor="hero-parroquia" className="sr-only">Filtrar por parroquia</label>
+            <select
+              id="hero-parroquia"
+              value={parroquiaFiltro}
+              onChange={(e) => setParroquiaFiltro(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-white/30 bg-white px-2 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-white sm:flex-none"
+            >
+              <option value="">Parroquia</option>
+              {PARROQUIAS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
           </div>
 
           <div className="hidden shrink-0 items-center gap-1.5 lg:flex">

@@ -221,53 +221,46 @@ export default function GaleriaDesaparecidos({
         }
       />
 
-      {/* Controles (solo si NO viene controlado por el header del shell). */}
+      {/* Controles (solo si NO viene controlado por el header del shell).
+          Buscador + Estado + Parroquia en UNA sola fila compacta (igual al header). */}
       {!controlado && (
-      <div role="search" aria-label="Buscar y filtrar desaparecidos" className="sticky top-0 z-10 -mx-3 mb-4 flex flex-col gap-2 bg-slate-50/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:flex-row sm:px-4">
-        <div className="flex-1">
-          <label htmlFor="desap-q" className="sr-only">Buscar por nombre</label>
-          <input
-            id="desap-q"
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nombre…"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-          />
-        </div>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <label htmlFor="desap-estado" className="sr-only">Filtrar por estado</label>
-            <select
-              id="desap-estado"
-              value={estado}
-              onChange={(e) => setEstado(e.target.value)}
-              className="w-full min-w-0 rounded-lg border border-slate-300 px-2 py-2 text-base text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-            >
-              <option value="">Todos los estados</option>
-              {/* 'fallecido' excluido del filtro público (privacidad). */}
-              {Object.entries(ESTADO_LABEL)
-                .filter(([k]) => k !== 'fallecido')
-                .map(([k, label]) => (
-                  <option key={k} value={k}>{label}</option>
-                ))}
-            </select>
-          </div>
-          <div className="flex-1">
-            <label htmlFor="desap-parroquia" className="sr-only">Filtrar por parroquia</label>
-            <select
-              id="desap-parroquia"
-              value={parroquia}
-              onChange={(e) => setParroquia(e.target.value)}
-              className="w-full min-w-0 rounded-lg border border-slate-300 px-2 py-2 text-base text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-            >
-              <option value="">Todas las parroquias</option>
-              {parroquias.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+      <div role="search" aria-label="Buscar y filtrar desaparecidos" className="sticky top-0 z-10 -mx-3 mb-4 flex items-center gap-2 bg-slate-50/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:px-4">
+        <label htmlFor="desap-q" className="sr-only">Buscar por nombre</label>
+        <input
+          id="desap-q"
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar por nombre…"
+          className="min-w-0 flex-[2] rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 sm:flex-1"
+        />
+        <label htmlFor="desap-estado" className="sr-only">Filtrar por estado</label>
+        <select
+          id="desap-estado"
+          value={estado}
+          onChange={(e) => setEstado(e.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 sm:flex-none"
+        >
+          <option value="">Estado</option>
+          {/* 'fallecido' excluido del filtro público (privacidad). */}
+          {Object.entries(ESTADO_LABEL)
+            .filter(([k]) => k !== 'fallecido')
+            .map(([k, label]) => (
+              <option key={k} value={k}>{label}</option>
+            ))}
+        </select>
+        <label htmlFor="desap-parroquia" className="sr-only">Filtrar por parroquia</label>
+        <select
+          id="desap-parroquia"
+          value={parroquia}
+          onChange={(e) => setParroquia(e.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 sm:flex-none"
+        >
+          <option value="">Parroquia</option>
+          {parroquias.map((p) => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
       </div>
       )}
 

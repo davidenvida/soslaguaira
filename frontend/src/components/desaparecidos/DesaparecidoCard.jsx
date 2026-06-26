@@ -32,6 +32,16 @@ const flagIntel = (id, payload) =>
     ? api.flagIntelPersona(id, payload)
     : http.post(`/intel/personas/${id}/flag`, payload);
 
+// Cruza esta ficha contra las listas manuscritas de hospital y devuelve
+// { revisado_listas_at, alta[], media[] }. Usa el named export de api.js
+// (revisarEnListas) que Bruno expone; si aún no está, cae al POST directo.
+const revisarListas = (id, payload = {}) =>
+  typeof api.revisarEnListas === 'function'
+    ? api.revisarEnListas(id, payload)
+    : http
+        .post(`/intel/personas/${id}/revisar-listas`, payload)
+        .then((r) => r.data?.data ?? r.data);
+
 function Placeholder() {
   return (
     <div className="flex aspect-[4/5] w-full items-center justify-center bg-slate-100 text-slate-300">
@@ -39,6 +49,26 @@ function Placeholder() {
         <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5.33 0-8 2.67-8 6v2h16v-2c0-3.33-2.67-6-8-6Z" />
       </svg>
     </div>
+  );
+}
+
+// Una coincidencia en lista de hospital. tono 'alta' = cédula exacta (verde),
+// 'media' = nombre+apellido estricto (ámbar). entrada = { nombre, estado, lugar }.
+const COINCIDENCIA_TONO = {
+  alta: 'bg-emerald-50 ring-emerald-200 text-emerald-800',
+  media: 'bg-amber-50 ring-amber-200 text-amber-800',
+};
+function CoincidenciaItem({ c, tono }) {
+  const e = c?.entrada || {};
+  return (
+    <li className={`rounded-lg px-2.5 py-2 ring-1 ${COINCIDENCIA_TONO[tono] || COINCIDENCIA_TONO.media}`}>
+      <div className="text-xs font-bold leading-tight">🏥 {c?.fuente || 'Hospital'}</div>
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] opacity-90">
+        {e.nombre && <span className="font-medium">{e.nombre}</span>}
+        {e.estado && <span className="opacity-80">{e.estado}</span>}
+        {e.lugar && <span className="opacity-80">{e.lugar}</span>}
+      </div>
+    </li>
   );
 }
 
@@ -56,6 +86,14 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
   const [enviandoFlag, setEnviandoFlag] = useState(false);
   const [flagEnviado, setFlagEnviado] = useState(false);
   const [flagError, setFlagError] = useState(false);
+  // Revisar en listas de hospital (match). resultado=null => aún no se revisó en esta vista.
+  // resultado = { alta:[], media:[] } (alta=cédula exacta, media=nombre+apellido estricto).
+  const [revisando, setRevisando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [revisadoAt, setRevisadoAt] = useState(
+    persona.revisado_listas_at || persona.revisadoListasAt || null,
+  );
+  const [errorRevisar, setErrorRevisar] = useState(false);
 
   const foto = resolveFoto(persona);
   const nom = nombre(persona);
@@ -121,6 +159,25 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
       setFlagError(true);
     } finally {
       setEnviandoFlag(false);
+    }
+  };
+
+  // Cruza la ficha contra las listas de hospital y muestra las coincidencias inline.
+  const revisarEnListas = async () => {
+    if (revisando) return;
+    setRevisando(true);
+    setErrorRevisar(false);
+    try {
+      const data = await revisarListas(persona.id);
+      setResultado({
+        alta: Array.isArray(data?.alta) ? data.alta : [],
+        media: Array.isArray(data?.media) ? data.media : [],
+      });
+      setRevisadoAt(data?.revisado_listas_at || data?.revisadoListasAt || new Date().toISOString());
+    } catch {
+      setErrorRevisar(true);
+    } finally {
+      setRevisando(false);
     }
   };
 
@@ -209,6 +266,67 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
             Ver en el mapa
           </button>
         )}
+
+        {/* Match con hospitales: cruza esta ficha contra las listas manuscritas. */}
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={revisarEnListas}
+            disabled={revisando}
+            className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+          >
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Zm1 5v3h3v2h-3v3h-2v-3H8v-2h3V7h2Z" />
+            </svg>
+            {revisando ? 'Revisando…' : resultado != null ? 'Revisar de nuevo' : 'Revisar en listas'}
+          </button>
+
+          {revisadoAt && (
+            <p className="mt-1 text-center text-[11px] text-slate-400">
+              Última revisión: {fmtFechaHora(revisadoAt)}
+            </p>
+          )}
+
+          {errorRevisar && (
+            <p className="mt-1 text-center text-[11px] text-red-600" role="alert">
+              No se pudo revisar. Intenta de nuevo.
+            </p>
+          )}
+
+          {resultado != null && !errorRevisar && (
+            resultado.alta.length === 0 && resultado.media.length === 0 ? (
+              <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-center text-[11px] text-slate-500">
+                Sin coincidencias por ahora.
+              </p>
+            ) : (
+              <div className="mt-2 space-y-2" aria-label="Coincidencias en listas de hospital">
+                {/* ALTA: cédula exacta -> aparece en lista (definitivo). */}
+                {resultado.alta.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold text-emerald-700">✓ Aparece en lista</p>
+                    <ul className="space-y-1.5">
+                      {resultado.alta.map((c, i) => (
+                        <CoincidenciaItem key={c.lista_id ?? `alta-${i}`} c={c} tono="alta" />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* MEDIA: nombre+apellido estricto -> posible, verificar. */}
+                {resultado.media.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold text-amber-700">Posible — verificar</p>
+                    <ul className="space-y-1.5">
+                      {resultado.media.map((c, i) => (
+                        <CoincidenciaItem key={c.lista_id ?? `media-${i}`} c={c} tono="media" />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )
+          )}
+        </div>
 
         {/* Mantiene el directorio vivo: marcar como encontrada / a salvo.
             Pide identificar a quien confirma (detiene la búsqueda). */}
