@@ -13,19 +13,16 @@ export default function EstadisticasDirectorio({
   accion = null,
   titulo = null,
   onIrHospitales,
-  onIrMapa,
 }) {
-  // Navegación desde las cards del hero (las cards reemplazan a los tabs). Guard:
-  // si la prop no viene, el handler queda undefined y no rompe.
+  // La card de hospital navega a su módulo. Guard: si la prop no viene, queda undefined.
   const irHospitales = typeof onIrHospitales === 'function' ? onIrHospitales : undefined;
-  const irMapa = typeof onIrMapa === 'function' ? onIrMapa : undefined;
 
   const canFilter = typeof onEstado === 'function';
   // Tocar el número de la izquierda (Reportes) limpia el filtro = ver todos.
   const verTodosActivo = canFilter && estado === '';
 
   return (
-    <div className="-mx-3 mb-3 border-y border-emerald-100 bg-emerald-50 px-3 py-3 sm:-mx-4 sm:px-4 lg:mx-0 lg:rounded-2xl lg:border">
+    <div className="-mx-3 mb-3 border-y-2 border-slate-700 bg-emerald-50 px-3 py-3 sm:-mx-4 sm:px-4 lg:mx-0 lg:rounded-2xl lg:border-2">
       {titulo && <div className="mb-2 flex justify-center sm:justify-start">{titulo}</div>}
 
       {/* HERO del match: 3 cards simétricas [Reportes rojo] → [Coincidencias verde glow] ← [Listas azul].
@@ -39,30 +36,17 @@ export default function EstadisticasDirectorio({
         className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2.5"
       >
         {/* IZQUIERDA: Reportes (principal, rojo). Tocar la card limpia el filtro = ver todos.
-            Icono de personas a la IZQUIERDA del número (enmarca el centro). En la esquina
-            inferior derecha, un botón-pin (hermano, no anidado) que lleva al mapa. */}
-        <div className="relative flex min-w-0 flex-1">
-          <StatCard
-            valor={fmt(vista.total)}
-            label="Reportes"
-            numero="text-4xl"
-            tono="reportes"
-            icono={<IconPersonas className="h-7 w-7 sm:h-9 sm:w-9" />}
-            iconoLado="left"
-            onClick={canFilter ? () => onEstado('') : undefined}
-            activo={verTodosActivo}
-          />
-          <button
-            type="button"
-            onClick={() => irMapa?.()}
-            aria-label="Ver en el mapa"
-            className="absolute bottom-2 right-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-violet-600 text-white shadow-md ring-2 ring-white transition hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
-              <path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" />
-            </svg>
-          </button>
-        </div>
+            Icono de personas a la IZQUIERDA del número (enmarca el centro). */}
+        <StatCard
+          valor={fmt(vista.total)}
+          label="Reportes"
+          numero="text-4xl"
+          tono="reportes"
+          icono={<IconPersonas className="h-7 w-7 sm:h-9 sm:w-9" />}
+          iconoLado="left"
+          onClick={canFilter ? () => onEstado('') : undefined}
+          activo={verTodosActivo}
+        />
 
         {/* Flujo Reportes -> centro. */}
         <div className="flex shrink-0 items-center justify-center">

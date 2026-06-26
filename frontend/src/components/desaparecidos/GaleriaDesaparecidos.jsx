@@ -15,6 +15,7 @@ import useDebounce from '../search/useDebounce';
 import DesaparecidoCard from './DesaparecidoCard';
 import EstadisticasDirectorio from './EstadisticasDirectorio';
 import ChipsEstado from './ChipsEstado';
+import BotonVerMapa from './BotonVerMapa';
 import BusquedaUnificada from './BusquedaUnificada';
 import { ESTADO_LABEL } from './estados';
 import { mockDesaparecidos } from './mockDesaparecidos';
@@ -260,14 +261,20 @@ export default function GaleriaDesaparecidos({
   return (
     <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-6xl px-3 pb-3 pt-2 sm:px-4">
       <div className="lg:flex lg:items-start lg:gap-4">
-        {/* Columna principal: hero + chips (móvil) + controles + galería. */}
+        {/* Rail IZQUIERDO: botón "Ver reportes en el mapa" (solo desktop lg+). Espejo del rail derecho. */}
+        <aside aria-label="Ver en el mapa" className="hidden shrink-0 lg:block lg:w-40">
+          <div className="sticky top-2">
+            <BotonVerMapa variant="rail" onClick={onIrMapa} />
+          </div>
+        </aside>
+
+        {/* Columna principal: hero + botón mapa (móvil) + chips (móvil) + controles + galería. */}
         <div className="min-w-0 lg:flex-1">
       <EstadisticasDirectorio
         vista={vista}
         estado={estado}
         onEstado={aplicarFiltroStat}
         onIrHospitales={onIrHospitales}
-        onIrMapa={onIrMapa}
         titulo={
           <span className="flex items-baseline gap-1.5 whitespace-nowrap">
             <span className="text-base font-bold text-slate-900">Desaparecidos</span>
@@ -292,6 +299,9 @@ export default function GaleriaDesaparecidos({
           )
         }
       />
+
+      {/* Botón "Ver reportes en el mapa" en móvil/tablet (<lg, sin rails). En desktop va en el rail izquierdo. */}
+      <BotonVerMapa variant="row" onClick={onIrMapa} className="mt-3 lg:hidden" />
 
       {/* Controles (solo si NO viene controlado por el header del shell).
           Buscador + Estado + Parroquia en UNA sola fila compacta (igual al header). */}
@@ -383,9 +393,9 @@ export default function GaleriaDesaparecidos({
       )}
         </div>
 
-        {/* Rail vertical de chips de filtro: SOLO desktop (lg+), en el margen blanco
-            derecho. Siguen siendo clickeables como filtros de estado. */}
-        <aside aria-label="Filtros por estado" className="hidden shrink-0 lg:block lg:w-44">
+        {/* Rail DERECHO: chips de filtro. SOLO desktop (lg+), margen blanco derecho.
+            Espejo del rail izquierdo. Siguen siendo clickeables como filtros de estado. */}
+        <aside aria-label="Filtros por estado" className="hidden shrink-0 lg:block lg:w-40">
           <div className="sticky top-2">
             <ChipsEstado
               orientacion="col"
