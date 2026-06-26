@@ -151,12 +151,15 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
         aria-label="Resumen del cruce: reportes y personas en listas de hospital alimentan las posibles coincidencias"
         className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2.5"
       >
-        {/* IZQUIERDA: Reportes (principal, rojo). Tocar limpia el filtro = ver todos. */}
+        {/* IZQUIERDA: Reportes (principal, rojo). Tocar limpia el filtro = ver todos.
+            Icono de personas a la IZQUIERDA del número (enmarca el centro). */}
         <StatCard
           valor={fmt(vista.total)}
           label="Reportes"
           numero="text-4xl"
           tono="reportes"
+          icono={<IconPersonas className="h-7 w-7 sm:h-9 sm:w-9" />}
+          iconoLado="left"
           onClick={canFilter ? () => onEstado('') : undefined}
           activo={verTodosActivo}
         />
@@ -183,12 +186,15 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
           <FlechaFlujo dir="left" tint="listas" className="hidden sm:inline-flex" />
         </div>
 
-        {/* DERECHA: En listas de hospital (azul, simétrica a Reportes). */}
+        {/* DERECHA: En listas de hospital (azul, simétrica a Reportes).
+            Icono de hospital a la DERECHA del número (enmarca el centro). */}
         <StatCard
           valor={fmt(vista.personas_listas_hospital)}
           label="En listas de hospital"
           numero="text-3xl sm:text-4xl"
           tono="listas"
+          icono={<IconHospital className="h-7 w-7 sm:h-9 sm:w-9" />}
+          iconoLado="right"
         />
       </div>
 
@@ -229,18 +235,39 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
 // 'reportes' rojo (principal), 'coincidencias' verde con resplandor (corazón del match),
 // 'listas' azul (simétrica a reportes). `numero` controla el tamaño del número.
 const HERO_TONO = {
-  reportes: { card: 'bg-red-50 ring-red-300', num: 'text-red-600', label: 'text-red-700', activo: 'ring-red-500' },
-  coincidencias: { card: 'bg-emerald-50 ring-emerald-400 shadow-lg shadow-emerald-400/60', num: 'text-emerald-700', label: 'text-emerald-700' },
-  listas: { card: 'bg-sky-50 ring-sky-300', num: 'text-sky-700', label: 'text-sky-700' },
+  reportes: {
+    card: 'bg-red-50 ring-red-300',
+    num: 'text-red-600',
+    label: 'text-red-700',
+    icon: 'text-red-500',
+    activo: 'ring-red-500',
+  },
+  coincidencias: {
+    card: 'bg-emerald-50 ring-emerald-400 shadow-lg shadow-emerald-400/60',
+    num: 'text-emerald-700',
+    label: 'text-emerald-700',
+    icon: 'text-emerald-500',
+  },
+  listas: {
+    card: 'bg-sky-50 ring-sky-300',
+    num: 'text-sky-700',
+    label: 'text-sky-700',
+    icon: 'text-sky-500',
+    activo: 'ring-sky-500',
+  },
 };
 
-function StatCard({ valor, label, numero, tono, onClick, activo, children }) {
+function StatCard({ valor, label, numero, tono, onClick, activo, icono, iconoLado, children }) {
   const t = HERO_TONO[tono] || HERO_TONO.listas;
   const base = `flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-2 py-2.5 text-center ring-2 ${t.card}`;
   const aria = `${valor} ${label}`;
   const contenido = (
     <>
-      <span aria-hidden="true" className={`font-black leading-none tabular-nums ${numero} ${t.num}`}>{valor}</span>
+      <span className="flex items-center justify-center gap-1.5">
+        {icono && iconoLado === 'left' && <span aria-hidden="true" className={`shrink-0 ${t.icon}`}>{icono}</span>}
+        <span aria-hidden="true" className={`font-black leading-none tabular-nums ${numero} ${t.num}`}>{valor}</span>
+        {icono && iconoLado === 'right' && <span aria-hidden="true" className={`shrink-0 ${t.icon}`}>{icono}</span>}
+      </span>
       <span aria-hidden="true" className={`mt-1 text-[11px] font-bold leading-tight sm:text-xs ${t.label}`}>{label}</span>
       {children}
     </>
@@ -262,6 +289,24 @@ function StatCard({ valor, label, numero, tono, onClick, activo, children }) {
     <div className={base} aria-label={aria} role="group">
       {contenido}
     </div>
+  );
+}
+
+// Iconos temáticos de las cards laterales (SVG inline, currentColor hereda el tono).
+// Personas (Reportes) y cruz médica/hospital (En listas de hospital).
+function IconPersonas({ className = '' }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 2c-2.67 0-8 1.34-8 4v2h9.09a5.5 5.5 0 0 1 1.16-3.79C9.55 13.08 8.66 13 8 13Zm8 0c-.35 0-.74.02-1.15.06A5.49 5.49 0 0 1 17 16.5V19h7v-2c0-2.66-5.33-4-8-4Z" />
+    </svg>
+  );
+}
+
+function IconHospital({ className = '' }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M10 2a1 1 0 0 0-1 1v6H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h6v6a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6h6a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-6V3a1 1 0 0 0-1-1h-4Z" />
+    </svg>
   );
 }
 

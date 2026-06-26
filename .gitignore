@@ -25,6 +25,13 @@ backend/uploads/*
 # ── Exports de DATA REAL (PII de personas: NO va a repo público) ─
 backend/exports/
 
+# ── Datos operativos / sensibles (PII de hospital, difusión, intel) ──
+# NO van al repo público ni al build de Railway.
+Listas manuscrita/
+difusion/
+Reportes/
+OPERATIVO_SOS_LAGUAIRA.md
+
 # ── Internos VOZCLAUD / coordinación (no van al repo público) ─
 CLAUDE.md
 **/CLAUDE.md

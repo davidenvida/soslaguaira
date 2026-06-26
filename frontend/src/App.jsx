@@ -469,7 +469,9 @@ function VistaBtn({ activo, onClick, label, children }) {
       onClick={onClick}
       aria-pressed={activo}
       className={`flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
-        activo ? 'bg-slate-900 text-white shadow' : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
+        activo
+          ? 'bg-slate-900 text-white shadow'
+          : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
       }`}
     >
       <span aria-hidden="true">{children}</span>
