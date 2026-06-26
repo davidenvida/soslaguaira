@@ -12,6 +12,7 @@ import http, { fotoUrl as toBackendUrl } from '../../api';
 import Lightbox from '../ui/Lightbox';
 import TablaPersonas from './TablaPersonas';
 import { normalizarFilas, ESTADO_LISTA } from './listasUtils';
+import { fmtFechaHora } from '../../utils/fecha';
 
 const tokenDeUrl = () => {
   try {
@@ -34,13 +35,6 @@ const detalle = (id, token) =>
 // Borrado de lista (solo admin): cascade de entradas + imagen.
 const borrar = (id, token) =>
   http.delete(`/listas/${id}`, { headers: { 'X-Admin-Token': token } }).then(unwrap);
-
-const fmtFecha = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 const normalizarListas = (res) => {
   const arr = res?.listas || res?.items || (Array.isArray(res) ? res : res?.data) || [];
@@ -261,7 +255,7 @@ export default function VerListasSubidas({ className = '' }) {
                 <div className="min-w-0 text-xs text-slate-500">
                   <div className="text-sm font-bold text-slate-800">{sel.fuente || 'Lista'}</div>
                   {sel.tipo && <div>Tipo: {sel.tipo}</div>}
-                  {fmtFecha(sel.fecha || sel.created_at) && <div>{fmtFecha(sel.fecha || sel.created_at)}</div>}
+                  {fmtFechaHora(sel.fecha || sel.created_at) && <div>Subida: {fmtFechaHora(sel.fecha || sel.created_at)}</div>}
                 </div>
               </div>
               {cargandoDetalle ? (
@@ -322,7 +316,9 @@ export default function VerListasSubidas({ className = '' }) {
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-slate-800">{l.fuente || 'Lista'}</div>
                           <div className="text-xs text-slate-500">
-                            {[l.tipo, fmtFecha(l.fecha || l.created_at)].filter(Boolean).join(' · ')}
+                            {[l.tipo, fmtFechaHora(l.fecha || l.created_at) && `Subida: ${fmtFechaHora(l.fecha || l.created_at)}`]
+                              .filter(Boolean)
+                              .join(' · ')}
                           </div>
                         </div>
                         {l.total != null && (

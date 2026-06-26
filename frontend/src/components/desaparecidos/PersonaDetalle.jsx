@@ -10,6 +10,7 @@ import * as api from '../../api';
 import Lightbox from '../ui/Lightbox';
 import FuenteIcono from '../ui/FuenteIcono';
 import { estadoLabel, estadoColor } from './estados';
+import { fmtFechaHora } from '../../utils/fecha';
 
 const resolveFoto = (o) => toBackendUrl(o?.foto_url || o?.fotoUrl || '');
 const nombre = (o) => o?.nombre_completo || o?.nombreCompleto || o?.nombre || 'Sin nombre';
@@ -17,13 +18,6 @@ const ubicacion = (o) => o?.ultima_ubicacion || o?.ultimaUbicacion || '';
 const fuente = (o) => o?.fuente_url || o?.fuenteUrl || '';
 const contacto = (o) => o?.contacto || o?.contacto_nombre || '';
 const sector = (o) => o?.sector_o_edificio || o?.sectorOEdificio || '';
-
-const fmtFecha = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 const patchIntel = (id, payload) =>
   typeof api.updateIntelPersona === 'function'
@@ -208,7 +202,7 @@ export default function PersonaDetalle({ persona, onClose, onUpdate, onVerEnMapa
                 : ''}
             </Fila>
             {persona.descripcion && <p className="text-sm leading-snug text-slate-700">{persona.descripcion}</p>}
-            <Fila label="Reporte">{fmtFecha(persona.fecha_reporte || persona.fechaReporte)}</Fila>
+            <Fila label="Publicado">{fmtFechaHora(persona.created_at || persona.createdAt || persona.fecha_reporte || persona.fechaReporte)}</Fila>
             {yaASalvo && (persona.confirmado_por || persona.confirmadoPor) && (
               <p className="text-xs text-emerald-600">
                 Confirmado por {persona.confirmado_por || persona.confirmadoPor}

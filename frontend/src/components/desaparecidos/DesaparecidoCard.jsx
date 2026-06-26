@@ -7,6 +7,7 @@ import * as api from '../../api';
 import Lightbox from '../ui/Lightbox';
 import FuenteIcono from '../ui/FuenteIcono';
 import { estadoLabel, estadoColor } from './estados';
+import { fmtFechaHora } from '../../utils/fecha';
 
 // Pasa la foto por el helper de api.js: /uploads/... -> dominio backend en prod
 // (proxy de Vite en dev); URL absoluta -> tal cual.
@@ -14,15 +15,9 @@ const resolveFoto = (o) => toBackendUrl(o?.foto_url || o?.fotoUrl || '');
 const nombre = (o) => o?.nombre_completo || o?.nombreCompleto || o?.nombre || 'Sin nombre';
 const ubicacion = (o) => o?.ultima_ubicacion || o?.ultimaUbicacion || '';
 const fuente = (o) => o?.fuente_url || o?.fuenteUrl || '';
-const fecha = (o) => o?.fecha_reporte || o?.fechaReporte || '';
+// Fecha de publicación: created_at si está, si no fecha_reporte.
+const fecha = (o) => o?.created_at || o?.createdAt || o?.fecha_reporte || o?.fechaReporte || '';
 const contacto = (o) => o?.contacto || o?.contacto_nombre || '';
-
-const fmtFecha = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 // PATCH del intel. Usa el named export de api.js si existe; si no, cae al
 // http.patch directo para no bloquearse.
@@ -67,7 +62,7 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
   const ubic = ubicacion(persona);
   const url = fuente(persona);
   const cont = contacto(persona);
-  const f = fmtFecha(fecha(persona));
+  const f = fmtFechaHora(fecha(persona));
   const yaASalvo = persona.estado === 'a_salvo';
   const tieneMapa = typeof persona.lat === 'number' && typeof persona.lng === 'number';
 
@@ -186,7 +181,7 @@ export default function DesaparecidoCard({ persona, onUpdate, onVerEnMapa }) {
         )}
 
         <div className="mt-auto flex items-center justify-between pt-2">
-          {f && <span className="text-[11px] text-slate-400">{f}</span>}
+          {f && <span className="text-[11px] text-slate-400">Publicado: {f}</span>}
           {url && (
             <a
               href={url}

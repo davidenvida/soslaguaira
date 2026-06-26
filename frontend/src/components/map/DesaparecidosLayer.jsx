@@ -19,10 +19,12 @@ import PersonaDetalle from '../desaparecidos/PersonaDetalle';
 import PopupFoto from './PopupFoto';
 import FuenteIcono from '../ui/FuenteIcono';
 import { resolveFoto, hasLatLng } from './fields';
+import { fmtFechaHora } from '../../utils/fecha';
 
 const nombre = (d) => d.nombre_completo || d.nombreCompleto || d.nombre || 'Sin nombre';
 const ubicacion = (d) => d.ultima_ubicacion || d.ultimaUbicacion || d.parroquia || '';
 const fuente = (d) => d.fuente_url || d.fuenteUrl || '';
+const fechaPub = (d) => d.created_at || d.createdAt || d.fecha_reporte || d.fechaReporte || '';
 
 // Normaliza un reporte al formato que consume ClusterModal. `raw` lleva el
 // registro completo para abrir la ficha (PersonaDetalle) al seleccionarlo.
@@ -50,6 +52,7 @@ function MarcadorDesaparecido({ d, lat, lng, destacado, onVerDetalle }) {
   const foto = resolveFoto(d);
   const nom = nombre(d);
   const url = fuente(d);
+  const fpub = fmtFechaHora(fechaPub(d));
 
   return (
     <Marker
@@ -76,6 +79,12 @@ function MarcadorDesaparecido({ d, lat, lng, destacado, onVerDetalle }) {
               <div className="sos-popup__row">
                 <span className="sos-popup__label">Parroquia: </span>
                 {d.parroquia}
+              </div>
+            )}
+            {fpub && (
+              <div className="sos-popup__row">
+                <span className="sos-popup__label">Publicado: </span>
+                {fpub}
               </div>
             )}
             {url && (
