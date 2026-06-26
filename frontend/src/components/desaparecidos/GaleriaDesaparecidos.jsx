@@ -47,6 +47,7 @@ const matchLocal = (p, { q, estado, parroquia }) => {
 
 export default function GaleriaDesaparecidos({
   onVerEnMapa,
+  onVerCoincidencias,
   q: qProp,
   setQ: setQProp,
   estado: estadoProp,
@@ -191,18 +192,34 @@ export default function GaleriaDesaparecidos({
 
   return (
     <section aria-label="Personas desaparecidas" className="mx-auto w-full max-w-6xl px-3 pb-3 pt-2 sm:px-4">
-      {/* Cabecera compacta: título + conteo en una línea (sin párrafo). */}
-      <header className="mb-2 flex items-baseline gap-2">
-        <h2 className="text-base font-bold text-slate-900">Desaparecidos</h2>
-        {total != null && (
-          <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-500">
-            {total} {total === 1 ? 'reporte' : 'reportes'}
+      <EstadisticasDirectorio
+        items={visibles}
+        estado={estado}
+        onEstado={aplicarFiltroStat}
+        titulo={
+          <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span className="text-base font-bold text-slate-900">Desaparecidos</span>
+            {total != null && (
+              <span className="text-xs font-semibold tabular-nums text-slate-500">
+                {total} {total === 1 ? 'reporte' : 'reportes'}
+              </span>
+            )}
+            {source === 'mock' && <span className="text-[10px] text-slate-400">(prueba)</span>}
           </span>
-        )}
-        {source === 'mock' && <span className="text-[10px] text-slate-400">(datos de prueba)</span>}
-      </header>
-
-      <EstadisticasDirectorio items={visibles} estado={estado} onEstado={aplicarFiltroStat} />
+        }
+        accion={
+          onVerCoincidencias && (
+            <button
+              type="button"
+              onClick={onVerCoincidencias}
+              className="inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white shadow hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:w-auto"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5"><path d="M16.5 6.5a4.5 4.5 0 0 0-3.5 1.68A4.5 4.5 0 1 0 7.5 15h.5v-2h-.5a2.5 2.5 0 1 1 2.45-3h2.1A4.5 4.5 0 1 0 16.5 6.5zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM9 11h6v2H9z" /></svg>
+              Posibles reunificaciones
+            </button>
+          )
+        }
+      />
 
       {/* Controles (solo si NO viene controlado por el header del shell). */}
       {!controlado && (

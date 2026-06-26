@@ -60,7 +60,7 @@ const ACTIVE = {
   red: 'ring-2 ring-red-500',
 };
 
-export default function EstadisticasDirectorio({ items = [], estado = '', onEstado }) {
+export default function EstadisticasDirectorio({ items = [], estado = '', onEstado, accion = null, titulo = null }) {
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
@@ -98,13 +98,19 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
   const canFilter = typeof onEstado === 'function';
 
   return (
-    // Una sola fila horizontal de chips compactos; en móvil scrollea en X si no
-    // entran (nunca dos filas) para que los reportes queden en la primera pantalla.
-    <ul
-      className="-mx-3 mb-3 flex flex-nowrap gap-2 overflow-x-auto px-3 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4"
-      aria-label="Estadísticas del directorio"
-    >
-      {cards.map(({ key, label, color, filtro }) => {
+    // Barra verde clara: secuencia izquierda-a-derecha -> título + divisor + los
+    // chips (en una fila que scrollea si no entra), y la acción a la DERECHA.
+    // En móvil apila (título+chips arriba con scroll-x, acción abajo) sin romperse.
+    <div className="-mx-3 mb-3 flex flex-col gap-2 border-y border-emerald-100 bg-emerald-50 px-3 py-2 sm:-mx-4 sm:flex-row sm:items-center sm:gap-3 sm:px-4">
+      <div className="flex min-w-0 items-center gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-1">
+        {titulo && (
+          <>
+            <div className="shrink-0">{titulo}</div>
+            <span className="h-5 w-px shrink-0 bg-emerald-300" aria-hidden="true" />
+          </>
+        )}
+        <ul className="flex flex-nowrap gap-2" aria-label="Estadísticas del directorio">
+          {cards.map(({ key, label, color, filtro }) => {
         const clickable = canFilter && filtro !== undefined;
         const activo = clickable && filtro === estado;
         const cls = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 ring-1 ${COLORS[color]} ${
@@ -130,6 +136,10 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
           </li>
         );
       })}
-    </ul>
+        </ul>
+      </div>
+      {/* Acción a la derecha de la barra (debajo en móvil). */}
+      {accion && <div className="shrink-0">{accion}</div>}
+    </div>
   );
 }
