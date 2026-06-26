@@ -131,14 +131,56 @@ router.post('/personas', async (req, res, next) => {
       ];
     };
 
+    // Enriquece (sin crear fila) una ficha existente que matchea por CEDULA: rellena gaps,
+    // conserva foto /uploads y anexa la fuente nueva al array 'fuentes'.
+    const SQL_MERGE_CEDULA = `
+      UPDATE personas_intel SET
+        edad              = COALESCE(edad, $2),
+        ultima_ubicacion  = COALESCE(ultima_ubicacion, $3),
+        parroquia         = COALESCE(parroquia, $4),
+        sector_o_edificio = COALESCE(sector_o_edificio, $5),
+        descripcion       = COALESCE(descripcion, $6),
+        foto_url          = CASE WHEN foto_url LIKE '/uploads/%' THEN foto_url ELSE COALESCE(foto_url, $7) END,
+        reportante        = COALESCE(reportante, $8),
+        relacion          = COALESCE(relacion, $9),
+        contacto          = COALESCE(contacto, $10),
+        notas             = COALESCE(notas, $11),
+        lat               = COALESCE(lat, $12),
+        lng               = COALESCE(lng, $13),
+        fuentes           = CASE WHEN $14::text IS NULL OR $14::text = '' THEN fuentes
+                                 ELSE (SELECT to_jsonb(array_agg(DISTINCT e))
+                                       FROM jsonb_array_elements_text(fuentes || to_jsonb($14::text)) AS e) END
+      WHERE id = $1`;
+
     let inserted = 0;
     let updated = 0;
+    let merged = 0; // fusionados por cedula (no crearon fila nueva)
     const ids = [];
     if (valid.length) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
         for (const it of valid) {
+          // Dedup automatico por CEDULA: si ya existe, enriquece esa ficha en vez de duplicar.
+          const ced = normalizarCedula(it.cedula);
+          let fusion = null;
+          if (ced) {
+            fusion = (await client.query(
+              'SELECT id FROM personas_intel WHERE cedula = $1 AND duplicate_of IS NULL LIMIT 1', [ced]
+            )).rows[0];
+          }
+          if (fusion) {
+            const coords = validCoords(it.lat, it.lng);
+            await client.query(SQL_MERGE_CEDULA, [
+              fusion.id, toIntOrNull(it.edad), cleanStr(it.ultima_ubicacion, 300), cleanStr(it.parroquia, 120),
+              cleanStr(it.sector_o_edificio, 200), cleanStr(it.descripcion, 2000), cleanStr(it.foto_url, 500),
+              cleanStr(it.reportante, 200), cleanStr(it.relacion, 120), cleanStr(it.contacto, 120),
+              cleanStr(it.notas, 2000), coords ? coords.lat : null, coords ? coords.lng : null, cleanStr(it.fuente_url, 500),
+            ]);
+            ids.push(fusion.id);
+            merged++;
+            continue;
+          }
           const r = await client.query(sql, buildParams(it));
           if (r.rows.length) {
             ids.push(r.rows[0].id);
@@ -166,8 +208,8 @@ router.post('/personas', async (req, res, next) => {
 
     return ok(
       res,
-      { inserted, updated, ids, rejected, alertas },
-      `${inserted} insertado(s), ${updated} actualizado(s), ${rejected.length} rechazado(s).`,
+      { inserted, updated, merged, ids, rejected, alertas },
+      `${inserted} insertado(s), ${updated} actualizado(s), ${merged} fusionado(s) por cedula, ${rejected.length} rechazado(s).`,
       201
     );
   } catch (err) {
