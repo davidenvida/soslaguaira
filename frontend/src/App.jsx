@@ -80,6 +80,16 @@ function AppInner({ setDestacarId }) {
     setCoincInicial('con')
     setVista('hospitales')
   }, [])
+  // Navegación por las cards del hero (reemplazan a los viejos tabs).
+  const irHospitales = useCallback(() => {
+    setCoincInicial(null)
+    setVista('hospitales')
+  }, [])
+  const irMapa = useCallback(() => {
+    setMapTarget(null)
+    setVista('mapa')
+  }, [])
+  const volverAReportes = useCallback(() => setVista('directorio'), [])
   const { refresh, heatmap, toggleHeatmap } = useMapData()
   const dialogRef = useRef(null)
 
@@ -250,34 +260,8 @@ function AppInner({ setDestacarId }) {
         </div>
       </header>
 
-      {/* Línea debajo del header: los 3 botones de vista, grandes y vistosos */}
-      <div role="group" aria-label="Vista" className="z-[500] mx-auto flex w-full max-w-6xl gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
-        <VistaBtn activo={vista === 'directorio'} onClick={() => setVista('directorio')} label="Reportes">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M4 5h2v2H4zm4 0h12v2H8zM4 11h2v2H4zm4 0h12v2H8zM4 17h2v2H4zm4 0h12v2H8z" /></svg>
-        </VistaBtn>
-        <VistaBtn activo={vista === 'mapa'} onClick={() => setVista('mapa')} label="Mapa">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M12 2a7 7 0 0 0-7 7c0 4 7 13 7 13s7-9 7-13a7 7 0 0 0-7-7zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" /></svg>
-        </VistaBtn>
-        <VistaBtn activo={vista === 'hospitales'} onClick={() => { setVista('hospitales'); setCoincInicial(null) }} label="Hospitales">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z" /></svg>
-        </VistaBtn>
-        {/* Toggle Mapa de calor: solo en la vista Mapa, a la derecha del switcher. */}
-        {vista === 'mapa' && (
-          <button
-            onClick={toggleHeatmap}
-            aria-pressed={heatmap}
-            className={`flex min-h-[48px] shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
-              heatmap ? 'bg-slate-900 text-white shadow' : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
-              <path d="M12 2s6 5.5 6 10a6 6 0 0 1-12 0c0-1.6.6-3.1 1.4-4.4C8 9.7 9 11 9 11s-.5-3 1-5c.8 1 2 2.5 2 2.5S12.5 5 12 2z" />
-            </svg>
-            <span className="hidden sm:inline">{heatmap ? 'Ver marcadores' : 'Mapa de calor'}</span>
-            <span className="sm:hidden">Calor</span>
-          </button>
-        )}
-      </div>
+      {/* La navegación entre Reportes / Mapa / Hospitales ahora vive en las cards
+          del hero (EstadisticasDirectorio). Mapa y Hospitales muestran un "Volver". */}
 
       {/* Banda de acción en UNA fila: Ver listas (izq) + Subir lista + explicación */}
       <div className="z-[500] flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
@@ -294,6 +278,30 @@ function AppInner({ setDestacarId }) {
               <MapBase target={mapTarget}>
                 <MapLayers />
               </MapBase>
+            </div>
+
+            {/* Top-izquierda: volver a Reportes + toggle mapa de calor (la derecha
+                queda libre para el panel de capas). */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[650] flex items-start justify-start gap-2 p-2">
+              <button
+                onClick={volverAReportes}
+                className="pointer-events-auto inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white/95 px-3 text-sm font-bold text-slate-700 shadow ring-1 ring-slate-300 backdrop-blur hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+              >
+                <span aria-hidden="true">←</span> Reportes
+              </button>
+              <button
+                onClick={toggleHeatmap}
+                aria-pressed={heatmap}
+                className={`pointer-events-auto inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-bold shadow backdrop-blur transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+                  heatmap ? 'bg-slate-900 text-white' : 'bg-white/95 text-slate-700 ring-1 ring-slate-300 hover:bg-white'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
+                  <path d="M12 2s6 5.5 6 10a6 6 0 0 1-12 0c0-1.6.6-3.1 1.4-4.4C8 9.7 9 11 9 11s-.5-3 1-5c.8 1 2 2.5 2 2.5S12.5 5 12 2z" />
+                </svg>
+                <span className="hidden sm:inline">{heatmap ? 'Ver marcadores' : 'Mapa de calor'}</span>
+                <span className="sm:hidden">Calor</span>
+              </button>
             </div>
 
             {/* Panel de capas (overlay) */}
@@ -319,8 +327,18 @@ function AppInner({ setDestacarId }) {
           </>
         ) : vista === 'hospitales' ? (
           /* Vista HOSPITALES: botones de hospital + buscador (reunificación) */
-          <div className="absolute inset-0">
-            <HospitalesView coincInicial={coincInicial} />
+          <div className="absolute inset-0 flex flex-col">
+            <div className="z-[500] flex shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 py-2">
+              <button
+                onClick={volverAReportes}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+              >
+                <span aria-hidden="true">←</span> Reportes
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <HospitalesView coincInicial={coincInicial} />
+            </div>
           </div>
         ) : (
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
@@ -328,6 +346,8 @@ function AppInner({ setDestacarId }) {
             <GaleriaDesaparecidos
               onVerEnMapa={verEnMapa}
               onVerCoincidencias={verCoincidencias}
+              onIrHospitales={irHospitales}
+              onIrMapa={irMapa}
               q={q}
               setQ={setQ}
               estado={estadoFiltro}
@@ -458,24 +478,6 @@ function SegBtn({ activo, onClick, children }) {
       }`}
     >
       {children}
-    </button>
-  )
-}
-
-// Botón de vista grande y vistoso (Reportes / Mapa / Hospitales): icono + label.
-function VistaBtn({ activo, onClick, label, children }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={activo}
-      className={`flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
-        activo
-          ? 'bg-slate-900 text-white shadow'
-          : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
-      }`}
-    >
-      <span aria-hidden="true">{children}</span>
-      <span>{label}</span>
     </button>
   )
 }

@@ -67,8 +67,21 @@ const ACTIVE = {
   red: 'ring-2 ring-red-500',
 };
 
-export default function EstadisticasDirectorio({ items = [], estado = '', onEstado, accion = null, titulo = null }) {
+export default function EstadisticasDirectorio({
+  items = [],
+  estado = '',
+  onEstado,
+  accion = null,
+  titulo = null,
+  onIrHospitales,
+  onIrMapa,
+}) {
   const [stats, setStats] = useState(null);
+
+  // Navegación desde las cards del hero (las cards reemplazan a los tabs). Guard:
+  // si la prop no viene, el handler queda undefined y no rompe.
+  const irHospitales = typeof onIrHospitales === 'function' ? onIrHospitales : undefined;
+  const irMapa = typeof onIrMapa === 'function' ? onIrMapa : undefined;
 
   // Token de admin en la URL (?token=...). Con token, el endpoint devuelve además el
   // conteo de fallecidos (gated por X-Admin-Token). El público (sin token) jamás lo ve.
@@ -151,18 +164,31 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
         aria-label="Resumen del cruce: reportes y personas en listas de hospital alimentan las posibles coincidencias"
         className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2.5"
       >
-        {/* IZQUIERDA: Reportes (principal, rojo). Tocar limpia el filtro = ver todos.
-            Icono de personas a la IZQUIERDA del número (enmarca el centro). */}
-        <StatCard
-          valor={fmt(vista.total)}
-          label="Reportes"
-          numero="text-4xl"
-          tono="reportes"
-          icono={<IconPersonas className="h-7 w-7 sm:h-9 sm:w-9" />}
-          iconoLado="left"
-          onClick={canFilter ? () => onEstado('') : undefined}
-          activo={verTodosActivo}
-        />
+        {/* IZQUIERDA: Reportes (principal, rojo). Tocar la card limpia el filtro = ver todos.
+            Icono de personas a la IZQUIERDA del número (enmarca el centro). En la esquina
+            inferior derecha, un botón-pin (hermano, no anidado) que lleva al mapa. */}
+        <div className="relative flex min-w-0 flex-1">
+          <StatCard
+            valor={fmt(vista.total)}
+            label="Reportes"
+            numero="text-4xl"
+            tono="reportes"
+            icono={<IconPersonas className="h-7 w-7 sm:h-9 sm:w-9" />}
+            iconoLado="left"
+            onClick={canFilter ? () => onEstado('') : undefined}
+            activo={verTodosActivo}
+          />
+          <button
+            type="button"
+            onClick={() => irMapa?.()}
+            aria-label="Ver en el mapa"
+            className="absolute bottom-2 right-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-violet-600 text-white shadow-md ring-2 ring-white transition hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
+              <path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" />
+            </svg>
+          </button>
+        </div>
 
         {/* Flujo Reportes -> centro. */}
         <div className="flex shrink-0 items-center justify-center">
@@ -186,8 +212,8 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
           <FlechaFlujo dir="left" tint="listas" className="hidden sm:inline-flex" />
         </div>
 
-        {/* DERECHA: En listas de hospital (azul, simétrica a Reportes).
-            Icono de hospital a la DERECHA del número (enmarca el centro). */}
+        {/* DERECHA: En listas de hospital (azul, simétrica a Reportes). Card entera clickeable
+            -> módulo de hospitales. Icono de hospital a la DERECHA del número. */}
         <StatCard
           valor={fmt(vista.personas_listas_hospital)}
           label="En listas de hospital"
@@ -195,6 +221,8 @@ export default function EstadisticasDirectorio({ items = [], estado = '', onEsta
           tono="listas"
           icono={<IconHospital className="h-7 w-7 sm:h-9 sm:w-9" />}
           iconoLado="right"
+          onClick={irHospitales}
+          ariaLabel="Ver módulo de hospitales"
         />
       </div>
 
@@ -257,10 +285,10 @@ const HERO_TONO = {
   },
 };
 
-function StatCard({ valor, label, numero, tono, onClick, activo, icono, iconoLado, children }) {
+function StatCard({ valor, label, numero, tono, onClick, activo, icono, iconoLado, ariaLabel, children }) {
   const t = HERO_TONO[tono] || HERO_TONO.listas;
   const base = `flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-2 py-2.5 text-center ring-2 ${t.card}`;
-  const aria = `${valor} ${label}`;
+  const aria = ariaLabel || `${valor} ${label}`;
   const contenido = (
     <>
       <span className="flex items-center justify-center gap-1.5">
@@ -279,7 +307,7 @@ function StatCard({ valor, label, numero, tono, onClick, activo, icono, iconoLad
         onClick={onClick}
         aria-pressed={activo}
         aria-label={aria}
-        className={`${base} transition hover:brightness-95 ${activo ? `ring-offset-1 ${t.activo || ''}` : ''}`}
+        className={`${base} cursor-pointer transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 ${activo ? `ring-offset-1 ${t.activo || ''}` : ''}`}
       >
         {contenido}
       </button>

@@ -48,6 +48,8 @@ const matchLocal = (p, { q, estado, parroquia }) => {
 export default function GaleriaDesaparecidos({
   onVerEnMapa,
   onVerCoincidencias,
+  onIrHospitales,
+  onIrMapa,
   q: qProp,
   setQ: setQProp,
   estado: estadoProp,
@@ -196,6 +198,8 @@ export default function GaleriaDesaparecidos({
         items={visibles}
         estado={estado}
         onEstado={aplicarFiltroStat}
+        onIrHospitales={onIrHospitales}
+        onIrMapa={onIrMapa}
         titulo={
           <span className="flex items-baseline gap-1.5 whitespace-nowrap">
             <span className="text-base font-bold text-slate-900">Desaparecidos</span>
