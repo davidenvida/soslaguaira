@@ -52,14 +52,26 @@ const reporteId = (p) => p?.coincidencia?.reporte?.id;
 const reporteFuenteUrl = (p) => p?.coincidencia?.reporte?.fuente_url || '';
 const reporteContacto = (p) => p?.coincidencia?.reporte?.contacto || '';
 
+// Construye un href tel: válido a partir de un contacto que puede traer VARIOS números
+// (separados por / , o ;). Toma el primero, lo limpia a [+ dígitos] (conserva un único +
+// inicial) y exige >=7 dígitos; si no, devuelve null (no se muestra el link).
+const telHrefDeContacto = (c) => {
+  const primero = String(c || '').split(/[/,;]/)[0];
+  const limpio = primero.replace(/[^+\d]/g, '');
+  const conPlus = limpio.startsWith('+');
+  const digitos = limpio.replace(/\+/g, '');
+  if (digitos.length < 7) return null;
+  return `tel:${conPlus ? '+' : ''}${digitos}`;
+};
+
 // Enlaces accionables de una coincidencia: ver la publicación del reporte y llamar al
 // contacto. Guard: solo muestra lo que exista. stopPropagation para no disparar el
 // click de la fila (abrir reporte). Reutilizable en cards (móvil) y tabla (desktop).
 function AccionesCoincidencia({ p, className = '' }) {
   const url = reporteFuenteUrl(p);
   const tel = reporteContacto(p);
-  if (!url && !tel) return null;
-  const telHref = `tel:${String(tel).replace(/[^+\d]/g, '')}`;
+  const telHref = telHrefDeContacto(tel);
+  if (!url && !telHref) return null;
   return (
     <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
       {url && (
@@ -75,7 +87,7 @@ function AccionesCoincidencia({ p, className = '' }) {
           <span className="sr-only"> del reporte (abre en nueva pestaña)</span>
         </a>
       )}
-      {tel && (
+      {telHref && (
         <a
           href={telHref}
           onClick={(e) => e.stopPropagation()}
