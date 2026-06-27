@@ -109,7 +109,7 @@ const HERO_TONO = {
     activo: 'ring-red-500',
   },
   coincidencias: {
-    card: 'bg-emerald-50 ring-emerald-400 shadow-lg shadow-emerald-400/60',
+    card: 'bg-emerald-50 ring-emerald-400 sos-glow-magico',
     num: 'text-emerald-700',
     label: 'text-emerald-700',
     icon: 'text-emerald-500',
@@ -234,6 +234,17 @@ const FLUJO_CSS = `
 @keyframes sosflow-y-d{0%,100%{opacity:.2;transform:translateY(-3px)}50%{opacity:1;transform:translateY(3px)}}
 @keyframes sosflow-y-u{0%,100%{opacity:.2;transform:translateY(3px)}50%{opacity:1;transform:translateY(-3px)}}
 @media (prefers-reduced-motion: reduce){.sosflow-ch{animation:none!important;opacity:1!important;transform:none!important}}
+
+/* Resplandor "mágico" de la card central (Posibles coincidencias): halo emerald que
+   respira lento y vira sutil a teal. Sin transform (no afecta layout / 320). */
+.sos-glow-magico{animation:sos-glow 2.8s ease-in-out infinite}
+@keyframes sos-glow{
+  0%,100%{box-shadow:0 0 13px 1px rgba(16,185,129,.40),0 8px 22px -6px rgba(16,185,129,.40)}
+  50%{box-shadow:0 0 30px 8px rgba(20,184,166,.62),0 8px 26px -4px rgba(16,185,129,.55)}
+}
+@media (prefers-reduced-motion: reduce){
+  .sos-glow-magico{animation:none;box-shadow:0 0 22px 4px rgba(16,185,129,.55),0 8px 22px -4px rgba(16,185,129,.5)}
+}
 `;
 function FlujoEstilos() {
   return <style>{FLUJO_CSS}</style>;
