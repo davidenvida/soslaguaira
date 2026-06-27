@@ -7,6 +7,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import http from '../../api';
 import PersonaDetalle from '../desaparecidos/PersonaDetalle';
 import ListaImagenModal from '../listas/ListaImagenModal';
+import FuenteIcono from '../ui/FuenteIcono';
 
 // Token admin (?token=) para marcar 'informado a la familia' (acción del equipo).
 const tokenDeUrl = () => {
@@ -45,6 +46,50 @@ const fetchPersonas = (hospital, coinc) =>
 // Coincidencia con un reporte del directorio: it.coincidencia.hay (bool).
 const coincide = (p) => Boolean(p?.coincidencia?.hay);
 const reporteId = (p) => p?.coincidencia?.reporte?.id;
+
+// Datos del REPORTE que matcheó (no de la lista de hospital): publicación original y
+// contacto, para poder actuar sobre la coincidencia.
+const reporteFuenteUrl = (p) => p?.coincidencia?.reporte?.fuente_url || '';
+const reporteContacto = (p) => p?.coincidencia?.reporte?.contacto || '';
+
+// Enlaces accionables de una coincidencia: ver la publicación del reporte y llamar al
+// contacto. Guard: solo muestra lo que exista. stopPropagation para no disparar el
+// click de la fila (abrir reporte). Reutilizable en cards (móvil) y tabla (desktop).
+function AccionesCoincidencia({ p, className = '' }) {
+  const url = reporteFuenteUrl(p);
+  const tel = reporteContacto(p);
+  if (!url && !tel) return null;
+  const telHref = `tel:${String(tel).replace(/[^+\d]/g, '')}`;
+  return (
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
+      {url && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:underline"
+        >
+          <FuenteIcono url={url} />
+          Ver publicación
+          <span className="sr-only"> del reporte (abre en nueva pestaña)</span>
+        </a>
+      )}
+      {tel && (
+        <a
+          href={telHref}
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:underline"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5">
+            <path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .58 3.6 1 1 0 0 1-.24 1z" />
+          </svg>
+          {tel}
+        </a>
+      )}
+    </div>
+  );
+}
 
 // Estado "¿Informado a la familia?" + (si admin) botones para marcar la vía.
 function InformadoControl({ p, esAdmin, onSet }) {
@@ -287,6 +332,8 @@ export default function HospitalesView({ coincInicial }) {
                       </span>
                     )}
                   </div>
+                  {/* Acciones sobre la coincidencia: publicación del reporte + teléfono. */}
+                  {clickable && <AccionesCoincidencia p={p} className="mt-1.5" />}
                   {open && (
                     <div id={`hd-${key}`} className="mt-2 space-y-1 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
                       <div><span className="font-semibold text-slate-500">Hospital: </span>{p.hospital || '—'}</div>
@@ -365,9 +412,13 @@ export default function HospitalesView({ coincInicial }) {
                     </td>
                     <td className="px-3 py-2">
                       {clickable ? (
-                        <span className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                          Coincide con un reporte <span aria-hidden="true">›</span>
-                        </span>
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                            Coincide con un reporte <span aria-hidden="true">›</span>
+                          </span>
+                          {/* Acciones: publicación del reporte + teléfono. */}
+                          <AccionesCoincidencia p={p} />
+                        </div>
                       ) : (
                         <span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
                           Sin coincidencia
