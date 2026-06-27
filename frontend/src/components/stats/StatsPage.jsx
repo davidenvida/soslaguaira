@@ -136,6 +136,7 @@ export default function StatsPage() {
   const [porOrigen, setPorOrigen] = useState(null); // { osint, app } — reportes por origen
   const [errores, setErrores] = useState(null); // lista de errores reportados (solo con ?token=)
   const [fallecidos, setFallecidos] = useState(null); // lista de fallecidos (admin, solo con ?token=)
+  const [coincidencias, setCoincidencias] = useState(null); // coincidencias reporte<->hospital (admin)
   const adminToken = tokenDeUrl();
 
   // Errores reportados (admin): solo si la URL trae ?token=.
@@ -174,6 +175,49 @@ export default function StatsPage() {
       vivo = false;
     };
   }, [adminToken]);
+
+  // Coincidencias reporte<->hospital (admin): reusa el endpoint de hospitales filtrado
+  // por coincidencia=con. Cada item trae coincidencia.reporte con el estado de notificación.
+  useEffect(() => {
+    if (!adminToken) return undefined;
+    let vivo = true;
+    http
+      .get('/hospitales/personas', {
+        params: { coincidencia: 'con', limit: 500 },
+        headers: { 'X-Admin-Token': adminToken },
+      })
+      .then((r) => {
+        if (!vivo) return;
+        const body = r.data;
+        const items =
+          body?.data?.items || body?.items || (Array.isArray(body?.data) ? body.data : Array.isArray(body) ? body : []);
+        setCoincidencias(items.filter((it) => it?.coincidencia?.hay));
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [adminToken]);
+
+  // Marca/desmarca "notificado a la familia" sobre el reporte que matcheó. Optimista; si el
+  // PATCH falla, revierte. Mismo patrón que HospitalesView (PATCH /intel/personas/:id).
+  const setNotificado = async (item, valor) => {
+    const rid = item?.coincidencia?.reporte?.id;
+    if (rid == null) return;
+    const parche = (v, extra = {}) => (x) =>
+      x?.coincidencia?.reporte?.id === rid
+        ? { ...x, coincidencia: { ...x.coincidencia, reporte: { ...x.coincidencia.reporte, informado_familia: v, ...extra } } }
+        : x;
+    setCoincidencias((prev) =>
+      prev.map(parche(valor, { informado_via: valor ? 'publicacion' : null, informado_at: valor ? new Date().toISOString() : null })),
+    );
+    try {
+      const body = valor ? { informado_familia: true, informado_via: 'publicacion' } : { informado_familia: false };
+      await http.patch(`/intel/personas/${rid}`, body, { headers: { 'X-Admin-Token': adminToken } });
+    } catch {
+      setCoincidencias((prev) => prev.map(parche(!valor)));
+    }
+  };
 
   // Reportes por origen (osint = equipo, app = externos). Llamada extra a intelStats.
   useEffect(() => {
@@ -262,6 +306,58 @@ export default function StatsPage() {
               <div className="mt-1 text-xs font-medium text-amber-700/80">Reportes de usuarios externos</div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Coincidencias reporte<->hospital (admin, solo con ?token=). Marca cuáles ya se
+          notificaron a la familia. */}
+      {adminToken && coincidencias && (
+        <div className="mb-6">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-bold text-slate-800">Coincidencias</h2>
+            <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-emerald-700">{coincidencias.length}</span>
+          </div>
+          <p className="mb-2 text-[11px] text-slate-400">
+            Vista privada · pacientes de hospital que coinciden con un reporte. Marca los que ya avisaste a la familia.
+          </p>
+          {coincidencias.length === 0 ? (
+            <p className="text-xs text-slate-400">No hay coincidencias.</p>
+          ) : (
+            <ul className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200">
+              {coincidencias.map((it, i) => {
+                const rep = it?.coincidencia?.reporte || {};
+                const inf = Boolean(rep.informado_familia);
+                return (
+                  <li key={rep.id != null ? `${rep.id}-${i}` : i} className="flex items-start gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-slate-900">
+                        {it.nombre || 'Paciente sin nombre'}
+                        {it.hospital && <span className="ml-1 font-normal text-slate-400">· {it.hospital}</span>}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
+                        <span><span className="text-slate-400">Reporte: </span>{rep.nombre_completo || '—'}</span>
+                        {it.cedula && <span className="tabular-nums">C.I. {it.cedula}</span>}
+                      </div>
+                      {inf && (
+                        <div className="mt-0.5 text-[11px] font-semibold text-emerald-700">
+                          ✓ Notificado{rep.informado_via ? ` · ${rep.informado_via}` : ''}{rep.informado_at ? ` · ${fmtFechaHora(rep.informado_at)}` : ''}
+                        </div>
+                      )}
+                    </div>
+                    <label className="flex min-h-[44px] shrink-0 cursor-pointer select-none items-center gap-1.5 text-xs font-semibold text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={inf}
+                        onChange={(e) => setNotificado(it, e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      Notificado
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
 
