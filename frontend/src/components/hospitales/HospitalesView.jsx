@@ -80,7 +80,7 @@ function AccionesCoincidencia({ p, className = '' }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:underline"
+          className="inline-flex min-h-[44px] items-center gap-1 py-2 text-[11px] font-semibold text-red-600 hover:underline md:min-h-0 md:py-0"
         >
           <FuenteIcono url={url} />
           Ver publicación
@@ -91,7 +91,7 @@ function AccionesCoincidencia({ p, className = '' }) {
         <a
           href={telHref}
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:underline"
+          className="inline-flex min-h-[44px] items-center gap-1 py-2 text-[11px] font-semibold text-emerald-700 hover:underline md:min-h-0 md:py-0"
         >
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5">
             <path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .58 3.6 1 1 0 0 1-.24 1z" />
