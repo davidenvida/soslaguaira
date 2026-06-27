@@ -90,6 +90,15 @@ function AppInner({ setDestacarId }) {
     setVista('mapa')
   }, [])
   const volverAReportes = useCallback(() => setVista('directorio'), [])
+  // El logo es "inicio": desde cualquier vista vuelve al directorio y sube el scroll.
+  const irHome = useCallback(() => {
+    setPanel(null)
+    setVista('directorio')
+    requestAnimationFrame(() => {
+      const el = document.getElementById('directorio-scroll')
+      if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }, [])
   const { refresh, heatmap, toggleHeatmap } = useMapData()
   const dialogRef = useRef(null)
 
@@ -185,16 +194,25 @@ function AppInner({ setDestacarId }) {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Encabezado: título | separador | buscador + filtros (estado/parroquia a la derecha) */}
-      <header className="pt-safe z-[500] bg-red-700 text-white shadow-md">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-3 py-1 lg:flex-row lg:items-center">
+      {/* Header tipo "isla": barra flotante roja translúcida con blur. */}
+      <header className="pt-safe z-[600] px-2 pt-2 text-white sm:px-3">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 rounded-2xl bg-red-700/85 px-3 py-2 shadow-xl ring-1 ring-white/15 backdrop-blur-md lg:flex-row lg:items-center">
           {/* Título + Rescatistas */}
           <div className="flex items-center justify-between gap-2 lg:shrink-0">
             <div className="flex min-w-0 items-center gap-2">
-              <img
-                src="/logo.webp"
-                alt="SOS La Guaira"
-                className="h-12 w-auto shrink-0 sm:h-16"
-              />
+              <button
+                type="button"
+                onClick={irHome}
+                aria-label="Ir al inicio"
+                title="Inicio"
+                className="shrink-0 rounded-xl transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <img
+                  src="/logo.webp"
+                  alt="SOS La Guaira — inicio"
+                  className="h-14 w-auto shrink-0 sm:h-20"
+                />
+              </button>
               <div className="min-w-0">
                 <h1 className="truncate text-base font-bold leading-tight sm:text-lg">SOS La Guaira</h1>
                 <p className="truncate text-[11px] leading-tight text-red-100">
@@ -349,7 +367,7 @@ function AppInner({ setDestacarId }) {
           </div>
         ) : (
           /* Vista DIRECTORIO (principal): galería a pantalla completa con scroll propio */
-          <div className="absolute inset-0 overflow-y-auto">
+          <div id="directorio-scroll" className="absolute inset-0 overflow-y-auto">
             <GaleriaDesaparecidos
               onVerEnMapa={verEnMapa}
               onVerCoincidencias={verCoincidencias}
