@@ -196,7 +196,7 @@ function AppInner({ setDestacarId }) {
       {/* Encabezado: título | separador | buscador + filtros (estado/parroquia a la derecha) */}
       {/* Header tipo "isla": barra flotante roja translúcida con blur. */}
       <header className="pt-safe z-[600] px-2 pt-2 text-white sm:px-3">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 rounded-2xl bg-red-700/85 px-3 py-2 shadow-xl ring-1 ring-white/15 backdrop-blur-md lg:flex-row lg:items-center">
+        <div className="mx-auto mt-2 flex max-w-6xl flex-col gap-2 rounded-2xl bg-red-700/85 px-3 py-2 shadow-xl ring-1 ring-white/15 backdrop-blur-md lg:flex-row lg:items-center">
           {/* Título + Rescatistas */}
           <div className="flex items-center justify-between gap-2 lg:shrink-0">
             <div className="flex min-w-0 items-center gap-2">
