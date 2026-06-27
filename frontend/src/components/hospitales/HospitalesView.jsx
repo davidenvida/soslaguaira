@@ -3,7 +3,7 @@
 // Hospital y Coincidencia (verde = coincide con un reporte del directorio, gris =
 // sin coincidencia). Botones de hospital arriba (Todos + cada uno) que filtran la
 // lista; el buscador filtra DENTRO de la lista por nombre o cédula. Pública.
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import http from '../../api';
 import PersonaDetalle from '../desaparecidos/PersonaDetalle';
 import ListaImagenModal from '../listas/ListaImagenModal';
@@ -52,52 +52,158 @@ const reporteId = (p) => p?.coincidencia?.reporte?.id;
 const reporteFuenteUrl = (p) => p?.coincidencia?.reporte?.fuente_url || '';
 const reporteContacto = (p) => p?.coincidencia?.reporte?.contacto || '';
 
-// Construye un href tel: válido a partir de un contacto que puede traer VARIOS números
-// (separados por / , o ;). Toma el primero, lo limpia a [+ dígitos] (conserva un único +
-// inicial) y exige >=7 dígitos; si no, devuelve null (no se muestra el link).
-const telHrefDeContacto = (c) => {
-  const primero = String(c || '').split(/[/,;]/)[0];
-  const limpio = primero.replace(/[^+\d]/g, '');
-  const conPlus = limpio.startsWith('+');
-  const digitos = limpio.replace(/\+/g, '');
-  if (digitos.length < 7) return null;
-  return `tel:${conPlus ? '+' : ''}${digitos}`;
+// Primer número "tal cual" del contacto (para mostrar). El contacto puede traer varios
+// separados por / , o ;.
+const primerNumero = (c) => String(c || '').split(/[/,;]/)[0].trim();
+
+// Normaliza el primer número del contacto a formato wa.me (solo dígitos, con código de
+// país). La data viene mezclada: con +, con 00, local con 0 (VE), o dígitos pelados.
+// Devuelve null si no llega a >=10 dígitos. Default país = Venezuela (58).
+const waNumeroDeContacto = (c) => {
+  const bruto = primerNumero(c);
+  if (!bruto) return null;
+  let digits;
+  if (bruto.includes('+')) {
+    digits = bruto.replace(/[^\d]/g, ''); // quita el + (y todo lo no-dígito)
+  } else {
+    const d = bruto.replace(/\D/g, '');
+    if (d.startsWith('00')) digits = d.slice(2); // prefijo internacional
+    else if (d.startsWith('0')) digits = `58${d.slice(1)}`; // local VE: quita 0, antepone 58
+    else if (/^(58|57|34)/.test(d) && d.length >= 11 && d.length <= 12) digits = d; // ya internacional
+    else digits = `58${d}`; // dígitos pelados -> asume Venezuela
+  }
+  return digits.length >= 10 ? digits : null;
 };
 
-// Enlaces accionables de una coincidencia: ver la publicación del reporte y llamar al
-// contacto. Guard: solo muestra lo que exista. stopPropagation para no disparar el
-// click de la fila (abrir reporte). Reutilizable en cards (móvil) y tabla (desktop).
+// Botón "Contacto" con dropdown de acciones de una coincidencia: ver la publicación del
+// reporte y abrir WhatsApp. Guard: solo aparece si hay al menos una opción. El menú es un
+// POPOVER position:fixed (anclado al botón) para NO cliparse por el overflow de la tabla.
+// Cierra con click afuera / Escape / scroll; navegable por teclado. stopPropagation para
+// no disparar el abrir-reporte de la fila. Reutilizable en cards (móvil) y tabla (desktop).
 function AccionesCoincidencia({ p, className = '' }) {
   const url = reporteFuenteUrl(p);
-  const tel = reporteContacto(p);
-  const telHref = telHrefDeContacto(tel);
-  if (!url && !telHref) return null;
+  const contacto = reporteContacto(p);
+  const wa = waNumeroDeContacto(contacto);
+
+  const opciones = [];
+  if (url) opciones.push({ tipo: 'pub', href: url, label: 'Publicación' });
+  if (wa) opciones.push({ tipo: 'wa', href: `https://wa.me/${wa}`, label: 'WhatsApp', detalle: primerNumero(contacto) });
+
+  const [abierto, setAbierto] = useState(false);
+  const [pos, setPos] = useState(null);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const cerrar = (devolverFoco) => {
+    setAbierto(false);
+    if (devolverFoco) btnRef.current?.focus();
+  };
+
+  const abrir = () => {
+    const b = btnRef.current?.getBoundingClientRect();
+    if (!b) return;
+    const ancho = 232;
+    const alto = 8 + opciones.length * 44;
+    let left = Math.min(b.left, window.innerWidth - ancho - 8);
+    left = Math.max(8, left);
+    const cabeAbajo = b.bottom + alto <= window.innerHeight - 8;
+    const top = cabeAbajo ? b.bottom + 4 : Math.max(8, b.top - alto - 4);
+    setPos({ top, left, ancho });
+    setAbierto(true);
+  };
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const onDown = (e) => {
+      if (!menuRef.current?.contains(e.target) && !btnRef.current?.contains(e.target)) cerrar(false);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') cerrar(true);
+    };
+    const onScroll = () => cerrar(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    const id = setTimeout(() => menuRef.current?.querySelector('[role="menuitem"]')?.focus(), 0);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+      clearTimeout(id);
+    };
+  }, [abierto]);
+
+  if (opciones.length === 0) return null;
+
+  // Navegación con flechas entre items del menú.
+  const onMenuKeyDown = (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const items = [...menuRef.current.querySelectorAll('[role="menuitem"]')];
+    const i = items.indexOf(document.activeElement);
+    const next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+    items[next]?.focus();
+  };
+
   return (
-    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
-      {url && (
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
+    <div className={`relative ${className}`}>
+      <button
+        ref={btnRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={abierto}
+        onClick={(e) => {
+          e.stopPropagation();
+          abierto ? cerrar(false) : abrir();
+        }}
+        className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-[11px] font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 md:min-h-0 md:py-1.5"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5">
+          <path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .58 3.6 1 1 0 0 1-.24 1z" />
+        </svg>
+        Contacto
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={`h-3 w-3 transition-transform ${abierto ? 'rotate-180' : ''}`}>
+          <path d="M7 10l5 5 5-5z" />
+        </svg>
+      </button>
+
+      {abierto && pos && (
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="Contacto"
+          onKeyDown={onMenuKeyDown}
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex min-h-[44px] items-center gap-1 py-2 text-[11px] font-semibold text-red-600 hover:underline md:min-h-0 md:py-0"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.ancho }}
+          className="z-[1500] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
         >
-          <FuenteIcono url={url} />
-          Ver publicación
-          <span className="sr-only"> del reporte (abre en nueva pestaña)</span>
-        </a>
-      )}
-      {telHref && (
-        <a
-          href={telHref}
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex min-h-[44px] items-center gap-1 py-2 text-[11px] font-semibold text-emerald-700 hover:underline md:min-h-0 md:py-0"
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5">
-            <path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .58 3.6 1 1 0 0 1-.24 1z" />
-          </svg>
-          {tel}
-        </a>
+          {opciones.map((o) => (
+            <a
+              key={o.tipo}
+              role="menuitem"
+              href={o.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation();
+                cerrar(false);
+              }}
+              className="flex min-h-[44px] items-center gap-2 px-3 text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+            >
+              {o.tipo === 'pub' ? (
+                <FuenteIcono url={o.href} />
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-4 w-4 shrink-0 text-green-600">
+                  <path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 0 1 8.413 3.488 11.82 11.82 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.978-1.043zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413z" />
+                </svg>
+              )}
+              <span className="font-semibold">{o.label}</span>
+              {o.detalle && <span className="ml-auto truncate text-xs text-slate-400" title={o.detalle}>{o.detalle}</span>}
+            </a>
+          ))}
+        </div>
       )}
     </div>
   );
